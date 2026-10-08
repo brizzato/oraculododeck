@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oráculo do Deck</title>
+<meta name="description" content="Diagnóstico de decks de Commander: curva, mana, funções, bracket e mão inicial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+/* Layout: uma coluna central larga; painéis em linhas que quebram para uma coluna no celular. */
+:root{
+  color-scheme: dark;
+  --bg:#14121A; --panel:#1D1A26; --line:#322D40; --line-strong:#453E57;
+  --fg:#ECE6D8; --fg-soft:#D9D2E3; --muted:#A79FB5; --track:#322D40; --band:#5A5370;
+  --gold:#D4A94E; --gold-hi:#E7C377; --good:#63C3AE; --warn:#E8A44C; --low:#E8824C; --crit:#F0736A; --info:#6FB4E8;
+  --display:'Marcellus', 'Iowan Old Style', Georgia, serif;
+  --body:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.5}
+[hidden]{display:none!important}
+a{color:var(--gold)} a:hover{color:var(--gold-hi)}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
+p{margin:0}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px 56px;display:flex;flex-direction:column;gap:28px}
+.mono{font-family:var(--mono)}
+.muted{color:var(--muted)}
+.soft{color:var(--fg-soft)}
+.small{font-size:14px}
+.eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)}
+
+header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:22px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:14px;font-family:var(--display);font-size:24px;letter-spacing:.02em}
+.pips{display:flex;gap:5px}
+.pips i{width:10px;height:10px;border-radius:50%;display:block}
+.linkbtn{background:none;border:0;color:var(--gold);min-height:44px;padding:0 4px;font-size:15px}
+.linkbtn:hover{color:var(--gold-hi)}
+
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:stretch}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.panel > h2{font-size:22px}
+.phead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.grow1{flex:1 1 320px} .grow2{flex:2 1 340px} .grow3{flex:3 1 460px}
+
+.btn{min-height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line-strong);background:transparent;color:var(--fg);font-size:15px;font-weight:500}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#14121A;font-weight:600}
+.btn.primary:hover{background:var(--gold-hi)}
+.btn.big{min-height:52px;padding:0 32px;font-size:17px;border-radius:12px}
+.btn.gold{border-color:var(--gold);color:var(--gold)}
+.pill{min-width:48px;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--line-strong);background:var(--bg);color:var(--fg);font-weight:600}
+.pill[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#14121A}
+.chip{display:inline-block;padding:4px 11px;border:1px solid var(--line-strong);border-radius:999px;font-size:13px;color:var(--fg-soft);white-space:nowrap}
+.chip.gold{border-color:var(--gold);color:var(--gold)}
+
+textarea,input[type=text],select{width:100%;background:var(--bg);border:1px solid var(--line-strong);border-radius:10px;color:var(--fg)}
+textarea{min-height:320px;resize:vertical;padding:16px;font-family:var(--mono);font-size:15px;line-height:1.6}
+select{min-height:44px;padding:0 12px}
+::placeholder{color:#8F87A0}
+
+.hero h1{font-size:clamp(32px,5vw,54px);line-height:1.1}
+.hero{display:flex;flex-direction:column;gap:16px;max-width:820px}
+.steps{display:flex;flex-wrap:wrap;gap:24px;padding-top:28px;border-top:1px solid var(--line)}
+.steps > div{flex:1 1 260px;display:flex;flex-direction:column;gap:6px}
+.steps h3{font-size:20px}
+
+.notice{border:1px solid var(--warn);border-radius:10px;padding:14px 16px;font-size:15px;color:var(--fg-soft)}
+.notice.crit{border-color:var(--crit)}
+.progress{height:8px;border-radius:4px;background:var(--track);overflow:hidden}
+.progress > i{display:block;height:100%;background:var(--gold);width:0;transition:width .2s}
+
+.score-big{font-family:var(--display);font-size:84px;line-height:1;color:var(--gold)}
+.bracket{display:flex;gap:6px}
+.bracket > div{flex:1;height:40px;border-radius:8px;border:1px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-weight:600;color:var(--muted)}
+.bracket > .target{border:1px dashed var(--gold);color:var(--gold)}
+.bracket > .est{background:var(--gold);border-color:var(--gold);color:#14121A}
+.srow{display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:0 12px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--fg);text-align:left;font-size:15px}
+.srow[aria-pressed="true"]{border-color:var(--gold);background:var(--bg)}
+.srow:disabled{cursor:default;color:var(--muted)}
+.srow .nm{flex:0 0 150px}
+.bar{flex:1;height:8px;border-radius:4px;background:var(--track);overflow:hidden;display:block}
+.bar > i{display:block;height:100%;border-radius:4px}
+.srow .val{flex:0 0 auto;min-width:34px;text-align:right;font-family:var(--mono);white-space:nowrap}
+.detail{flex:2 1 240px;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.detail .n{font-family:var(--display);font-size:44px;line-height:1}
+
+.checks{display:flex;flex-wrap:wrap;gap:12px}
+.check{flex:1 1 220px;min-width:0;border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.check .k{font-size:13px}
+
+.curve{display:flex;align-items:flex-end;gap:8px;height:210px}
+.curve button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;background:none;border:0;padding:0;color:var(--fg);min-width:0}
+.curve .col{width:100%;border-radius:6px 6px 0 0;min-height:2px}
+.curve button:hover .col{filter:brightness(1.15)}
+.frow{display:flex;flex-direction:column;gap:6px;background:none;border:0;padding:6px 0;color:var(--fg);text-align:left;width:100%;min-height:44px}
+.frow:hover .fname{color:var(--gold)}
+.ftrack{position:relative;height:10px;border-radius:5px;background:var(--track)}
+.ftrack i{position:absolute;top:0;bottom:0;border-radius:5px}
+.trow{display:flex;align-items:center;gap:10px;font-size:15px}
+.trow .nm{flex:0 0 128px}
+.trow .val{flex:0 0 28px;text-align:right;font-family:var(--mono)}
+
+.alerts{display:flex;flex-wrap:wrap;gap:16px}
+.alert{flex:1 1 260px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:8px}
+.alert .lvl{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.alert .lvl i{width:10px;height:10px;border-radius:50%;display:block}
+.alert h3{font-family:var(--body);font-size:17px;font-weight:600}
+
+.hand{display:flex;flex-wrap:wrap;gap:10px}
+.cardimg{flex:0 1 150px;min-width:104px;aspect-ratio:63/88;border-radius:4.75% / 3.5%;border:1px solid var(--line-strong);background:var(--bg);padding:0;overflow:hidden;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;color:var(--fg-soft)}
+.cardimg img{width:100%;height:100%;object-fit:cover;display:block}
+
+.decklist{display:flex;flex-wrap:wrap;gap:8px 32px}
+.group{flex:1 1 300px;min-width:0;display:flex;flex-direction:column}
+.group h3{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);padding:14px 0 6px}
+.crow{display:flex;align-items:center;gap:10px;min-height:40px;border-top:1px solid var(--line);font-size:15px}
+.crow .q{flex:0 0 22px;font-family:var(--mono);color:var(--muted)}
+.crow button{flex:1;min-width:0;min-height:40px;background:none;border:0;padding:0;text-align:left;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crow button:hover{color:var(--gold)}
+.crow .mv{font-family:var(--mono);color:var(--muted);flex:0 0 auto}
+.tag{font-size:12px;color:var(--muted);border:1px solid var(--line-strong);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.tag.gc{color:var(--warn);border-color:var(--warn)}
+
+dialog{background:var(--panel);color:var(--fg);border:1px solid var(--line-strong);border-radius:14px;padding:24px;max-width:min(760px,calc(100vw - 32px));width:100%}
+dialog::backdrop{background:rgba(8,7,12,.72)}
+.dlg{display:flex;flex-wrap:wrap;gap:24px}
+.dlg .imgs{display:flex;gap:10px;flex:0 1 260px;min-width:0}
+.dlg .imgs img{width:100%;min-width:0;border-radius:4.75% / 3.5%;display:block}
+.dlg .txt{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:12px}
+.oracle{white-space:pre-line;font-size:15px;color:var(--fg-soft)}
+footer{font-size:13px;color:var(--muted)}
+@media (max-width:520px){.panel{padding:18px}.srow .nm{flex-basis:112px}.score-big{font-size:68px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="brand">
+    <div class="pips" aria-hidden="true"><i style="background:#F2E9C9"></i><i style="background:#5AA6E0"></i><i style="background:#9A8FB0"></i><i style="background:#E0654F"></i><i style="background:#5DAE6B"></i></div>
+    Oráculo do Deck
+  </div>
+  <button class="linkbtn" id="btn-new" hidden>Analisar outro deck</button>
+</header>
+
+<!-- ENTRADA -->
+<main id="view-entry" style="display:flex;flex-direction:column;gap:36px">
+  <section class="hero">
+    <div class="eyebrow">Commander / EDH</div>
+    <h1>Cole sua lista. Receba o diagnóstico do deck como um sistema.</h1>
+    <p class="soft" style="font-size:18px;max-width:640px">Curva, mana, funções, checagens e bracket, calculados a partir do texto Oracle atual de cada carta.</p>
+  </section>
+
+  <section class="row">
+    <div class="panel grow3">
+      <label for="lista"><h2>Lista do deck</h2></label>
+      <p class="small muted">Uma carta por linha, no formato exportado do Moxfield ou Archidekt. Se a lista não marcar o comandante, uso a primeira linha, e você pode trocar depois.</p>
+      <textarea id="lista" spellcheck="false" placeholder="1 Giada, Font of Hope&#10;1 Sol Ring&#10;1 Swords to Plowshares&#10;1 Lyra Dawnbringer&#10;30 Plains&#10;..."></textarea>
+      <p class="small muted">Dados das cartas: Scryfall</p>
+    </div>
+    <div class="panel grow2">
+      <h2>O que você quer deste deck</h2>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="phead"><span style="font-weight:600;font-size:15px">Bracket alvo</span><span id="bracket-name" style="color:var(--gold);font-size:15px"></span></div>
+        <div id="bracket-pills" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        <p class="small muted">O diagnóstico compara o bracket estimado do deck com este alvo.</p>
+      </div>
+      <div id="entry-error" class="notice crit" hidden></div>
+      <div style="margin-top:auto;display:flex;flex-direction:column;gap:10px">
+        <button class="btn primary big" id="btn-go">Analisar deck</button>
+        <p class="small muted">Leva alguns segundos. Sua lista fica salva neste navegador.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="steps">
+    <div><h3>O site conta os fatos</h3><p class="soft" style="font-size:15px">Total de cartas, terrenos, curva, fontes de cor, legalidade e Game Changers, direto do Scryfall.</p></div>
+    <div><h3>As funções ficam visíveis</h3><p class="soft" style="font-size:15px">Ramp, compra, remoção, wipes e proteção. Clique em qualquer barra para ver quais cartas contaram.</p></div>
+    <div><h3>A leitura de estratégia vem depois</h3><p class="soft" style="font-size:15px">Planos do deck, trocas sugeridas e lista de compras entram na próxima etapa do site.</p></div>
+  </section>
+</main>
+
+<!-- CARREGANDO -->
+<main id="view-loading" hidden style="display:flex;flex-direction:column;gap:16px;padding:64px 0;max-width:560px">
+  <h1 style="font-size:32px">Consultando as cartas</h1>
+  <div class="progress"><i id="prog"></i></div>
+  <p class="muted" id="prog-text">Preparando a lista</p>
+</main>
+
+<!-- DIAGNÓSTICO -->
+<main id="view-diag" hidden style="display:flex;flex-direction:column;gap:28px"></main>
+
+<footer>Dados e imagens das cartas: Scryfall. Magic: The Gathering pertence à Wizards of the Coast. Site de fãs, sem vínculo com a Wizards.</footer>
+</div>
+
+<dialog id="dlg" aria-labelledby="dlg-name"></dialog>
+
+<script>
+'use strict';
+/* ============ utilidades ============ */
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const norm = (s) => String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[‘’]/g, "'").replace(/\s+/g, ' ').trim();
+const fmt = (n, d) => Number(n).toFixed(d == null ? 1 : d).replace('.', ',');
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem('oraculo:v1') || '{}'); } catch (e) { return {}; } },
+  set(v) { try { localStorage.setItem('oraculo:v1', JSON.stringify(v)); } catch (e) {} }
+};
+const BRACKETS = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5: 'cEDH' };
+const COLORS = { W: ['Branco', '#F2E9C9'], U: ['Azul', '#5AA6E0'], B: ['Preto', '#9A8FB0'], R: ['Vermelho', '#E0654F'], G: ['Verde', '#5DAE6B'] };
+const SCRY = 'https://api.scryfall.com';
+
+const state = { target: 3, deck: [], unresolved: [], fixed: [], gcKnown: true, sel: null, filter: null, hand: null };
+
+/* ============ leitura da lista ============ */
+const HEADS = { commander: 'cmd', commanders: 'cmd', comandante: 'cmd', comandantes: 'cmd', deck: 'main', main: 'main', mainboard: 'main', maindeck: 'main', 'main deck': 'main', companion: 'main', sideboard: 'side', 'side board': 'side', maybeboard: 'skip', considering: 'skip', tokens: 'skip' };
+
+function parseList(text) {
+  const main = new Map(); const side = new Map(); const cmd = []; let section = 'main'; let first = null;
+  for (const raw of text.split(/\r?\n/)) {
+    let line = raw.trim();
+    if (!line) continue;
+    const head = line.replace(/^(\/\/|#+)\s*/, '').replace(/[:\s]*(\(\d+\))?\s*$/, '').toLowerCase();
+    if (HEADS[head]) { section = HEADS[head]; continue; }
+    if (/^(\/\/|#)/.test(line) || section === 'skip') continue;
+    let qty = 1;
+    const m = line.match(/^(\d+)\s*x?\s+(.+)$/i);
+    if (m) { qty = parseInt(m[1], 10); line = m[2]; }
+    const tagCmd = /\[[^\]]*commander[^\]]*\]/i.test(line) || /\*CMDR\*/i.test(line);
+    line = line.replace(/\s+\^.*\^\s*$/, '').replace(/\s+\[[^\]]*\].*$/, '').replace(/(\s+\*[^*\s]+\*)+\s*$/, '')
+      .replace(/\s+\([A-Za-z0-9]{2,6}\)(\s+\S+)?\s*$/, '').replace(/(\s+\*[^*\s]+\*)+\s*$/, '').replace(/\s*\/\/\s*/, ' // ').trim();
+    if (!line || qty < 1) continue;
+    const key = norm(line);
+    const bucket = section === 'side' ? side : main;
+    const cur = bucket.get(key);
+    if (cur) cur.qty += qty; else bucket.set(key, { key: key, name: line, qty: qty });
+    if (section === 'cmd' || tagCmd) { if (cmd.indexOf(key) < 0) cmd.push(key); }
+    if (!first && section !== 'side') first = key;
+  }
+  // Export do Moxfield para MTGO coloca o comandante no "sideboard".
+  const sideCount = Array.from(side.values()).reduce((a, e) => a + e.qty, 0);
+  if (!cmd.length && sideCount >= 1 && sideCount <= 2) {
+    side.forEach((e) => { main.set(e.key, e); cmd.push(e.key); });
+  }
+  if (!cmd.length && first) cmd.push(first);
+  return { entries: Array.from(main.values()), commanders: cmd };
+}
+
+/* ============ Scryfall ============ */
+async function fetchCards(entries, onProgress) {
+  const found = new Map(); let missing = [];
+  const assign = (cards) => {
+    const idx = new Map();
+    for (const c of cards) {
+      idx.set(norm(c.name), c);
+      (c.card_faces || []).forEach((f) => { if (f.name && !idx.has(norm(f.name))) idx.set(norm(f.name), c); });
+    }
+    return idx;
+  };
+  for (let i = 0; i < entries.length; i += 75) {
+    const chunk = entries.slice(i, i + 75);
+    const res = await fetch(SCRY + '/cards/collection', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ identifiers: chunk.map((e) => ({ name: e.name })) })
+    });
+    if (!res.ok) throw new Error('Scryfall respondeu ' + res.status);
+    const j = await res.json();
+    const idx = assign(j.data || []);
+    for (const e of chunk) {
+      const c = idx.get(e.key) || idx.get(norm(e.name.split(' // ')[0]));
+      if (c) found.set(e.key, c); else missing.push(e);
+    }
+    onProgress(Math.min(i + 75, entries.length), entries.length);
+    await sleep(120);
+  }
+  // Nomes não encontrados: tenta a busca aproximada, uma a uma.
+  const fixed = []; const unresolved = [];
+  for (const e of missing.slice(0, 20)) {
+    try {
+      const res = await fetch(SCRY + '/cards/named?fuzzy=' + encodeURIComponent(e.name.split(' // ')[0]), { headers: { Accept: 'application/json' } });
+      if (res.ok) { const c = await res.json(); found.set(e.key, c); if (norm(c.name) !== e.key) fixed.push([e.name, c.name]); }
+      else unresolved.push(e.name);
+    } catch (err) { unresolved.push(e.name); }
+    await sleep(120);
+  }
+  missing.slice(20).forEach((e) => unresolved.push(e.name));
+  return { found: found, fixed: fixed, unresolved: unresolved };
+}
+
+async function fetchGameChangers() {
+  const names = new Set(); let url = SCRY + '/cards/search?q=' + encodeURIComponent('is:gamechanger') + '&unique=cards';
+  for (let page = 0; page < 5 && url; page++) {
+    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error('gc');
+    const j = await res.json();
+    (j.data || []).forEach((c) => names.add(norm(c.name)));
+    url = j.has_more ? j.next_page : null;
+    await sleep(120);
+  }
+  return names;
+}
+
+/* ============ leitura de cada carta ============ */
+const front = (c) => (c.type_line || (c.card_faces && c.card_faces[0] && c.card_faces[0].type_line) || '').split(' // ')[0];
+const backType = (c) => (c.type_line || '').split(' // ')[1] || '';
+const isLand = (c) => /\bLand\b/.test(front(c));
+const isMdfcLand = (c) => !isLand(c) && /\bLand\b/.test(backType(c));
+const oracle = (c) => c.oracle_text != null && c.oracle_text !== '' ? c.oracle_text : (c.card_faces || []).map((f) => f.oracle_text || '').join('\n//\n');
+const manaCost = (c) => c.mana_cost || (c.card_faces && c.card_faces[0] && c.card_faces[0].mana_cost) || '';
+const img = (c, size) => (c.image_uris && c.image_uris[size]) || (c.card_faces && c.card_faces[0] && c.card_faces[0].image_uris && c.card_faces[0].image_uris[size]) || '';
+const imgs = (c, size) => c.image_uris ? [c.image_uris[size]] : (c.card_faces || []).map((f) => f.image_uris && f.image_uris[size]).filter(Boolean);
+const mv = (c) => Number(c.cmc || 0);
+const liga = (c) => 'https://www.ligamagic.com.br/?view=cards/card&card=' + encodeURIComponent(c.name);
+
+const TYPES = [['Land', 'Terrenos'], ['Creature', 'Criaturas'], ['Planeswalker', 'Planeswalkers'], ['Battle', 'Batalhas'], ['Artifact', 'Artefatos'], ['Enchantment', 'Encantamentos'], ['Instant', 'Instantâneas'], ['Sorcery', 'Feitiços']];
+const mainType = (c) => { const t = front(c); for (const p of TYPES) if (new RegExp('\\b' + p[0] + '\\b').test(t)) return p[1]; return 'Outros'; };
+
+const any = (t, list) => list.some((r) => r.test(t));
+const firstMatch = (t, list) => { for (const r of list) { const m = t.match(r); if (m) return m[0]; } return null; };
+const RX = {
+  ramp: [/add \{[wubrgc\d]/, /adds? (one|two|three|x|an amount of|that much|an additional) [^.]*mana/, /mana of any (one )?(color|type)/, /search your library for [^.]*\bland\b[^.]*onto the battlefield/, /put (a|up to \w+|that|those|any number of) [^.]*\bland cards?\b[^.]*onto the battlefield/, /you may play (an additional land|\w+ additional lands)/, /create [^.]*treasure token/],
+  reducer: [/costs? (up to )?(\{[\dwubrgcx]\})+ less/],
+  draw: [/draws? (a|an|one|two|three|four|five|six|seven|x|that many|\d+) (additional )?cards?/, /draws? cards equal/, /exile the top [^.]*you may (play|cast)/, /look at the top [^.]*put (one|two|\w+) of them into your hand/],
+  engine: [/(whenever|at the beginning of)[^.]*\bdraws?\b/, /\{t\}[^:.]*:[^.]*\bdraws?\b/, /(whenever|at the beginning of)[^.]*exile the top/],
+  tutor: [/search your library for (a|an|up to \w+|any number of) [^.]*cards?/],
+  removal: [/(destroy|exile) (up to \w+ )?(other )?(another )?target [^.]*?(creature|permanent|artifact|enchantment|planeswalker|battle)/, /deals? [^.]*damage to (any target|target creature|target planeswalker|up to \w+ target)/, /target (creature|permanent|nonland permanent)[^.]*(into|on the bottom of|on top of) (its|their) owner'?s library/, /target creature gets -\d+\/-\d+/, /target (player|opponent) sacrifices/],
+  counter: [/counter target [^.]*(spell|ability)/],
+  wipe: [/(destroy|exile) (all|each) [^.]*?(creatures?|permanents?|artifacts|enchantments|planeswalkers)/, /damage to each (other )?creature/, /(all|each) (other )?creatures? gets? -\d+\/-\d+/, /each player sacrifices all/, /return all [^.]*(creatures|permanents)[^.]*to their owners'? hands/],
+  mld: [/destroy all lands/, /destroy all [^.]*\blands\b/, /each player sacrifices [^.]*\blands\b/, /sacrifices? all lands/],
+  protect: [/(gains?|have|has|gets?) [^.]*(hexproof|indestructible|shroud|protection from)/, /phases? out/, /prevent all (combat )?damage that would be dealt to (you|creatures you control|permanents you control)/],
+  recursion: [/return [^.]*from (your|a|any) graveyard to (your hand|the battlefield)/, /return [^.]*cards? from your graveyard/],
+  extraTurn: [/takes? an extra turn/]
+};
+function tagsOf(c) {
+  const tags = new Set(); const t = oracle(c).toLowerCase(); const land = isLand(c);
+  const own = t.replace(/(an |each |target |that )?opponents? draws?[^.,]*/g, '');
+  if (any(t, RX.mld)) tags.add('mld');
+  if (any(t, RX.extraTurn)) tags.add('extra');
+  if (land) return tags;
+  if (any(t, RX.ramp)) tags.add('ramp');
+  if (any(t, RX.reducer)) tags.add('reducer');
+  if (any(own, RX.draw)) { tags.add('draw'); if (any(own, RX.engine) || /Planeswalker/.test(front(c))) tags.add('engine'); }
+  const tut = firstMatch(t, RX.tutor); if (tut && !/\bland\b|basic/.test(tut)) tags.add('tutor');
+  const rem = firstMatch(t, RX.removal); if (rem && !/card from|graveyard/.test(rem)) tags.add('removal');
+  if (any(t, RX.counter)) tags.add('counter');
+  const wp = firstMatch(t, RX.wipe); if (wp && !/\bcards?\b/.test(wp) && !/\blands\b/.test(wp)) tags.add('wipe');
+  if (any(t, RX.protect)) tags.add('protect');
+  if (any(t, RX.recursion)) tags.add('recursion');
+  return tags;
+}
+const TAGNAMES = { ramp: 'Ramp', reducer: 'Redutor', draw: 'Compra', tutor: 'Tutor', removal: 'Remoção', counter: 'Anulação', wipe: 'Wipe', protect: 'Proteção', recursion: 'Recursão' };
+
+function copyLimit(c) {
+  if (/\bBasic\b/.test(front(c))) return Infinity;
+  const t = oracle(c).toLowerCase();
+  if (/a deck can have any number of cards named/.test(t)) return Infinity;
+  const m = t.match(/a deck can have up to (\w+) cards named/);
+  if (m) return ({ seven: 7, nine: 9 }[m[1]] || 99);
+  return 1;
+}
+
+/* ============ cálculo do diagnóstico ============ */
+function analyze() {
+  const deck = state.deck; const A = {};
+  const cmds = deck.filter((d) => d.cmd);
+  A.cmds = cmds;
+  A.total = deck.reduce((a, d) => a + d.qty, 0);
+  A.identity = Array.from(new Set(cmds.flatMap((d) => d.card.color_identity || [])));
+  const idSet = new Set(A.identity);
+  A.offColor = deck.filter((d) => (d.card.color_identity || []).some((x) => !idSet.has(x)));
+  A.banned = deck.filter((d) => d.card.legalities && d.card.legalities.commander === 'banned');
+  A.notLegal = deck.filter((d) => d.card.legalities && d.card.legalities.commander === 'not_legal');
+  A.dupes = deck.filter((d) => d.qty > copyLimit(d.card));
+  A.gc = deck.filter((d) => d.gc);
+  A.badCmd = cmds.filter((d) => !(/Legendary/.test(front(d.card)) && /Creature/.test(front(d.card))) && !/can be your commander/i.test(oracle(d.card)));
+
+  const lands = deck.filter((d) => isLand(d.card)); const spells = deck.filter((d) => !isLand(d.card));
+  const count = (list) => list.reduce((a, d) => a + d.qty, 0);
+  A.lands = count(lands); A.mdfc = count(deck.filter((d) => isMdfcLand(d.card)));
+  A.spells = count(spells);
+  A.avg = A.spells ? spells.reduce((a, d) => a + mv(d.card) * d.qty, 0) / A.spells : 0;
+
+  // curva
+  const labels = ['0', '1', '2', '3', '4', '5', '6', '7+'];
+  A.curve = labels.map((l, i) => ({ label: l, i: i, n: count(spells.filter((d) => Math.min(7, Math.floor(mv(d.card))) === i)) }));
+  A.top = count(spells.filter((d) => mv(d.card) >= 6));
+
+  // tipos e tribo
+  A.types = TYPES.map((p) => ({ name: p[1], n: count(deck.filter((d) => mainType(d.card) === p[1])) })).filter((t) => t.n > 0).sort((a, b) => b.n - a.n);
+  const creatures = deck.filter((d) => mainType(d.card) === 'Criaturas'); const sub = new Map();
+  creatures.forEach((d) => { ((front(d.card).split('—')[1] || '').trim().split(/\s+/)).filter(Boolean).forEach((s) => sub.set(s, (sub.get(s) || 0) + d.qty)); });
+  const topSub = Array.from(sub.entries()).sort((a, b) => b[1] - a[1])[0];
+  A.creatures = count(creatures);
+  A.tribe = topSub && topSub[1] >= 8 && topSub[1] / Math.max(1, A.creatures) >= 0.35 ? topSub : null;
+
+  // funções
+  const withTag = (t) => spells.filter((d) => d.tags.has(t));
+  A.fn = {};
+  ['ramp', 'reducer', 'draw', 'engine', 'tutor', 'removal', 'counter', 'wipe', 'protect', 'recursion'].forEach((t) => { A.fn[t] = count(withTag(t)); });
+  A.mld = deck.filter((d) => d.tags.has('mld')); A.extra = deck.filter((d) => d.tags.has('extra'));
+  A.cheap = count(spells.filter((d) => mv(d.card) <= 2 && (d.tags.has('ramp') || d.tags.has('draw'))));
+
+  // mana
+  A.tapped = count(lands.filter((d) => /enters (the battlefield )?tapped/i.test(oracle(d.card)) && !/unless|you may pay|if you control|as long as/i.test(oracle(d.card))));
+  A.tappedCond = count(lands.filter((d) => /enters (the battlefield )?tapped/i.test(oracle(d.card)) && /unless|you may pay|if you control|as long as/i.test(oracle(d.card))));
+  const pips = { W: 0, U: 0, B: 0, R: 0, G: 0 };
+  spells.forEach((d) => { (manaCost(d.card).match(/\{[^}]+\}/g) || []).forEach((sym) => { sym.replace(/[{}]/g, '').split('/').filter((x) => pips[x] != null).forEach((x, _, arr) => { pips[x] += d.qty / arr.length; }); }); });
+  const pipTotal = Object.values(pips).reduce((a, b) => a + b, 0);
+  const src = {}; let srcTotal = 0;
+  A.identity.forEach((c) => { src[c] = count(lands.filter((d) => (d.card.produced_mana || []).indexOf(c) >= 0)); srcTotal += src[c]; });
+  A.colors = A.identity.filter((c) => COLORS[c]).map((c) => ({ c: c, name: COLORS[c][0], hex: COLORS[c][1], pips: pips[c], pipShare: pipTotal ? pips[c] / pipTotal : 0, src: src[c], srcShare: srcTotal ? src[c] / srcTotal : 0 }));
+  A.colorless = count(lands.filter((d) => { const p = d.card.produced_mana || []; return p.length > 0 && !p.some((x) => idSet.has(x)); }));
+  A.noMana = count(lands.filter((d) => !(d.card.produced_mana || []).length));
+
+  // terrenos: faixa de referência (fórmula de Frank Karsten para Commander)
+  const rec = Math.round(31.42 + 3.13 * A.avg - 0.28 * A.cheap);
+  A.landLo = clamp(rec - 3, 28, 40); A.landHi = clamp(rec, 31, 43);
+  A.landEq = A.lands + A.mdfc * 0.5;
+
+  // bracket por regras verificáveis
+  let est = A.gc.length === 0 ? 2 : A.gc.length <= 3 ? 3 : 4; const why = [];
+  if (!state.gcKnown) why.push('Não consegui confirmar a lista de Game Changers agora, então esta estimativa pode estar baixa.');
+  else if (A.gc.length === 0) why.push('Nenhum Game Changer na lista. Pelas regras verificáveis o deck cabe no Bracket 2; a intenção e a força real podem colocá-lo no 1 ou no 3.');
+  else if (A.gc.length <= 3) why.push(plural(A.gc.length, 'Game Changer', 'Game Changers') + ' (' + A.gc.map((d) => d.card.name).join(', ') + '). O Bracket 3 permite até 3.');
+  else why.push(A.gc.length + ' Game Changers (' + A.gc.map((d) => d.card.name).join(', ') + '). Acima de 3, o deck vai para o Bracket 4.');
+  if (A.mld.length) { est = Math.max(est, 4); why.push(A.mld.map((d) => d.card.name).join(', ') + (A.mld.length === 1 ? ' destrói' : ' destroem') + ' terrenos em massa, o que só é aceito a partir do Bracket 4.'); }
+  if (A.extra.length) why.push(plural(A.extra.length, 'carta de turno extra', 'cartas de turno extra') + ' (' + A.extra.map((d) => d.card.name).join(', ') + '). Encadear turnos extras não cabe nos Brackets 1 a 3.');
+  if (A.fn.tutor >= 4) why.push(A.fn.tutor + ' tutores na lista. Muitos tutores aumentam a consistência e empurram o deck para cima.');
+  A.bracket = est; A.bracketWhy = why;
+
+  // notas com régua fixa
+  const S = [];
+  const add = (id, name, score, why2, rule) => S.push({ id: id, name: name, score: clamp(Math.round(score * 10) / 10, 0, 10), why: why2, rule: rule });
+  const landGap = A.landEq < A.landLo ? A.landLo - A.landEq : A.landEq > A.landHi ? A.landEq - A.landHi : 0;
+  const tappedOver = Math.max(0, A.tapped - Math.round(A.lands * 0.15));
+  let colorPen = 0; const colorNotes = [];
+  A.colors.forEach((c) => { const d = (c.pipShare - c.srcShare) * 100; if (A.colors.length > 1 && d > 8) { colorPen += d / 5; colorNotes.push(c.name + ' tem ' + Math.round(c.pipShare * 100) + '% dos símbolos e ' + Math.round(c.srcShare * 100) + '% das fontes'); } });
+  add('mana', 'Base de mana', 10 - landGap * 1.2 - tappedOver * 0.3 - colorPen,
+    A.lands + ' terrenos' + (A.mdfc ? ' e ' + A.mdfc + ' MDFC' : '') + ', para uma faixa de referência de ' + A.landLo + ' a ' + A.landHi + '. ' + (A.tapped ? plural(A.tapped, 'terreno entra', 'terrenos entram') + ' sempre virado' + (A.tapped === 1 ? '. ' : 's. ') : 'Nenhum terreno entra sempre virado. ') + (colorNotes.length ? colorNotes.join('; ') + '.' : ''),
+    'A faixa vai de 3 terrenos abaixo até o valor da fórmula de Frank Karsten (31,42 + 3,13 × custo médio − 0,28 × ramp e compra de custo até 2). Começa em 10. Perde 1,2 por terreno fora da faixa, 0,3 por terreno virado acima de 15% dos terrenos e pontos por cor com menos fontes do que símbolos.');
+  add('curva', 'Curva', 10 - Math.max(0, A.avg - 3.0) * 5 - Math.max(0, A.top - 8) * 0.3,
+    'Custo médio de ' + fmt(A.avg, 2) + ' entre as cartas que não são terreno. ' + plural(A.top, 'carta custa', 'cartas custam') + ' 6 ou mais.',
+    'Começa em 10. Perde 5 pontos por ponto de custo médio acima de 3,0 e 0,3 por carta de custo 6+ além da oitava. Redutores de custo ainda não entram nesta conta.');
+  add('ramp', 'Ramp', 10 - Math.max(0, 10 - A.fn.ramp) * 1.5,
+    plural(A.fn.ramp, 'peça', 'peças') + ' de ramp' + (A.fn.reducer ? ' e ' + plural(A.fn.reducer, 'redutor', 'redutores') + ' de custo, contados à parte' : '') + '. Meta: 10 a 12.',
+    'Começa em 10. Perde 1,5 por peça abaixo de 10.');
+  add('compra', 'Vantagem de cartas', 10 - Math.max(0, 10 - A.fn.draw) * 1.2 - (A.fn.engine < 3 ? 1 : 0),
+    plural(A.fn.draw, 'fonte', 'fontes') + ' de compra, das quais ' + A.fn.engine + (A.fn.engine === 1 ? ' é motor recorrente' : ' são motores recorrentes') + '. Meta: 10 a 12, com pelo menos 3 motores.',
+    'Começa em 10. Perde 1,2 por fonte abaixo de 10 e 1 ponto se houver menos de 3 motores recorrentes.');
+  const inter = A.fn.removal + A.fn.counter;
+  add('interacao', 'Interação', 10 - Math.max(0, 8 - inter) * 1.2 - Math.max(0, 2 - A.fn.wipe) * 1.5,
+    plural(A.fn.removal, 'remoção pontual', 'remoções pontuais') + ', ' + plural(A.fn.counter, 'anulação', 'anulações') + ' e ' + plural(A.fn.wipe, 'wipe', 'wipes') + '. Meta: 8 respostas pontuais e 2 a 4 wipes.',
+    'Começa em 10. Perde 1,2 por resposta pontual abaixo de 8 e 1,5 por wipe abaixo de 2.');
+  add('protecao', 'Proteção', 10 - Math.max(0, 3 - A.fn.protect) * 2,
+    plural(A.fn.protect, 'carta', 'cartas') + ' de proteção e ' + plural(A.fn.recursion, 'de recursão', 'de recursão') + '. Meta de proteção: 3 a 6.',
+    'Começa em 10. Perde 2 por carta de proteção abaixo de 3. Recursão é só informativa por enquanto.');
+  A.scores = S; A.overall = S.reduce((a, s) => a + s.score, 0) / S.length;
+
+  // alertas
+  const al = []; const push = (lvl, title, text) => al.push({ lvl: lvl, title: title, text: text });
+  if (A.total !== 100) push(0, 'O deck tem ' + A.total + ' cartas', 'Commander exige exatamente 100, contando o comandante.' + (state.unresolved.length ? ' ' + plural(state.unresolved.length, 'linha não foi reconhecida', 'linhas não foram reconhecidas') + ' e ficou de fora da conta.' : ''));
+  if (A.banned.length) push(0, plural(A.banned.length, 'carta banida', 'cartas banidas'), A.banned.map((d) => d.card.name).join(', ') + '.');
+  if (A.notLegal.length) push(0, plural(A.notLegal.length, 'carta não é legal', 'cartas não são legais') + ' em Commander', A.notLegal.map((d) => d.card.name).join(', ') + '.');
+  if (A.offColor.length) push(0, plural(A.offColor.length, 'carta fora', 'cartas fora') + ' da identidade de cor', A.offColor.map((d) => d.card.name).join(', ') + '.');
+  if (A.dupes.length) push(0, 'Cópias repetidas', A.dupes.map((d) => d.qty + '× ' + d.card.name).join(', ') + '. Commander permite uma cópia de cada carta, fora os terrenos básicos.');
+  if (A.badCmd.length) push(1, 'Comandante incomum', A.badCmd.map((d) => d.card.name).join(', ') + ' não é uma criatura lendária. Confira se é o comandante certo no seletor acima.');
+  if (landGap >= 3) push(0, 'Terrenos muito fora da faixa', A.lands + ' terrenos para uma faixa de ' + A.landLo + ' a ' + A.landHi + ', com custo médio de ' + fmt(A.avg, 2) + '.');
+  else if (landGap > 0) push(1, A.landEq < A.landLo ? 'Poucos terrenos' : 'Terrenos acima da faixa', A.lands + ' terrenos para uma faixa de ' + A.landLo + ' a ' + A.landHi + '.');
+  if (A.fn.draw <= 6) push(0, 'Pouca vantagem de cartas', plural(A.fn.draw, 'fonte', 'fontes') + ' de compra e ' + plural(A.fn.engine, 'motor', 'motores') + '. Meta: 10 a 12.');
+  else if (A.fn.draw < 10) push(1, 'Compra abaixo da meta', A.fn.draw + ' fontes de compra. Meta: 10 a 12.');
+  if (A.top >= 12) push(1, 'Topo de curva pesado', A.top + ' cartas de custo 6 ou mais, com custo médio de ' + fmt(A.avg, 2) + '.');
+  if (A.fn.ramp < 10) push(1, 'Ramp abaixo da meta', plural(A.fn.ramp, 'peça', 'peças') + ' para um custo médio de ' + fmt(A.avg, 2) + '. Meta: 10 a 12.');
+  if (inter < 6) push(1, 'Pouca interação pontual', inter + ' respostas entre remoções e anulações. Meta: 8.');
+  if (colorNotes.length) push(1, 'Cores desbalanceadas', colorNotes.join('; ') + '.');
+  if (A.bracket > state.target) push(1, 'Bracket acima do alvo', 'Estimado ' + A.bracket + ', alvo ' + state.target + '. Veja o motivo no painel de bracket.');
+  if (A.fn.wipe === 0) push(2, 'Nenhum wipe', 'O deck não tem como zerar a mesa se ficar para trás.');
+  if (A.fn.protect < 3) push(2, 'Pouca proteção', plural(A.fn.protect, 'carta protege', 'cartas protegem') + ' o board ou o comandante. Meta: 3 a 6.');
+  if (tappedOver > 0) push(2, 'Muitos terrenos virados', A.tapped + ' terrenos entram sempre virados.');
+  A.alerts = al.sort((a, b) => a.lvl - b.lvl);
+  return A;
+}
+
+/* ============ mão inicial ============ */
+function drawHand() {
+  const lib = [];
+  state.deck.forEach((d) => { if (!d.cmd) for (let i = 0; i < d.qty; i++) lib.push(d); });
+  for (let i = lib.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = lib[i]; lib[i] = lib[j]; lib[j] = t; }
+  const cards = lib.slice(0, 7);
+  const L = cards.filter((d) => isLand(d.card) || isMdfcLand(d.card)).length;
+  const cheap = cards.filter((d) => !isLand(d.card) && d.tags.has('ramp') && mv(d.card) <= 2).length;
+  let verdict, color, note;
+  if (L >= 3 && L <= 4) { verdict = 'Manter'; color = 'var(--good)'; note = L + ' terrenos em 7 cartas.'; }
+  else if (L === 2 && cheap >= 1) { verdict = 'Manter com risco'; color = 'var(--warn)'; note = '2 terrenos, com ' + plural(cheap, 'ramp barato', 'ramps baratos') + ' para compensar.'; }
+  else if (L === 5) { verdict = 'Manter com risco'; color = 'var(--warn)'; note = '5 terrenos: joga, mas com poucas ações.'; }
+  else { verdict = 'Mulligan'; color = 'var(--crit)'; note = plural(L, 'terreno', 'terrenos') + ' em 7 cartas.'; }
+  state.hand = { cards: cards, verdict: verdict, color: color, note: note };
+}
+
+/* ============ telas ============ */
+function show(view) {
+  ['entry', 'loading', 'diag'].forEach((v) => { $('#view-' + v).hidden = v !== view; });
+  $('#btn-new').hidden = view !== 'diag';
+  window.scrollTo(0, 0);
+}
+function renderBracketPills() {
+  $('#bracket-pills').innerHTML = [1, 2, 3, 4, 5].map((n) => '<button type="button" class="pill" data-b="' + n + '" aria-pressed="' + (state.target === n) + '">' + n + '</button>').join('');
+  $('#bracket-name').textContent = 'Bracket ' + state.target + ' · ' + BRACKETS[state.target];
+}
+
+const toneOf = (s) => s >= 8 ? 'var(--good)' : s >= 6.5 ? 'var(--gold)' : 'var(--low)';
+const FUNCS = [['ramp', 'Ramp', 10, 12], ['draw', 'Compra e vantagem', 10, 12], ['removal', 'Remoção pontual', 6, 8], ['counter', 'Anulações', 0, 4], ['wipe', 'Wipes', 2, 4], ['protect', 'Proteção', 3, 6], ['tutor', 'Tutores', 0, 3], ['recursion', 'Recursão', 2, 5], ['reducer', 'Redutores de custo', 0, 3]];
+
+function renderDiag() {
+  const A = analyze(); state.A = A;
+  if (!state.sel || !A.scores.some((s) => s.id === state.sel)) state.sel = A.scores.slice().sort((a, b) => a.score - b.score)[0].id;
+  const sel = A.scores.find((s) => s.id === state.sel);
+  const cmdNames = A.cmds.map((d) => d.card.name);
+  const idText = A.identity.length ? A.identity.filter((c) => COLORS[c]).map((c) => COLORS[c][0]).join(', ') : 'Incolor';
+  const cands = state.deck.filter((d) => d.cmd || (/Legendary/.test(front(d.card)) && /Creature|Planeswalker/.test(front(d.card))) || /can be your commander/i.test(oracle(d.card)));
+  const opt = (cur, none) => (none ? '<option value="">Sem segundo comandante</option>' : '') + cands.map((d) => '<option value="' + esc(d.key) + '"' + (cur === d.key ? ' selected' : '') + '>' + esc(d.card.name) + '</option>').join('');
+  const maxCurve = Math.max(1, ...A.curve.map((b) => b.n));
+  const maxType = Math.max(1, ...A.types.map((t) => t.n));
+  const lvl = [['Crítico', 'var(--crit)'], ['Moderado', 'var(--warn)'], ['Opcional', 'var(--info)']];
+  const okChk = (ok, good, bad) => '<div class="check"><div class="k" style="color:' + (ok ? 'var(--good)' : 'var(--crit)') + '">' + (ok ? 'Conferido' : 'Problema') + '</div><div style="font-size:15px">' + esc(ok ? good : bad) + '</div></div>';
+
+  let h = '';
+  // avisos de leitura
+  if (state.unresolved.length) h += '<div class="notice crit"><strong>' + plural(state.unresolved.length, 'linha não foi reconhecida', 'linhas não foram reconhecidas') + ':</strong> ' + esc(state.unresolved.join(', ')) + '. Confira a grafia e analise de novo.</div>';
+  if (state.fixed.length) h += '<div class="notice">Nomes corrigidos automaticamente: ' + state.fixed.map((f) => esc(f[0]) + ' → ' + esc(f[1])).join('; ') + '.</div>';
+
+  // cabeçalho
+  h += '<section class="row"><div class="grow3" style="display:flex;flex-direction:column;gap:14px;min-width:0">'
+    + '<div class="eyebrow">Diagnóstico · ' + esc(idText) + ' · ' + A.total + ' cartas</div>'
+    + '<h1 style="font-size:clamp(30px,4.6vw,50px);line-height:1.1">' + esc(cmdNames.join(' + ') || 'Sem comandante') + '</h1>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip">Alvo: Bracket ' + state.target + '</span>'
+    + (A.tribe ? '<span class="chip">' + A.tribe[1] + ' das ' + A.creatures + ' criaturas são ' + esc(A.tribe[0]) + '</span>' : '')
+    + '<span class="chip">Custo médio ' + fmt(A.avg, 2) + '</span></div></div>'
+    + '<div class="panel grow2"><h2>Comandante</h2>'
+    + '<div><label class="small muted" for="cmd1">Principal</label><select id="cmd1">' + opt(A.cmds[0] && A.cmds[0].key, false) + '</select></div>'
+    + '<div><label class="small muted" for="cmd2">Parceiro ou antecedente</label><select id="cmd2">' + opt(A.cmds[1] && A.cmds[1].key, true) + '</select></div>'
+    + '</div></section>';
+
+  // nota + bracket + notas por critério
+  h += '<section class="row"><div class="panel grow1" style="gap:20px"><div>'
+    + '<div class="small muted">Nota parcial</div>'
+    + '<div style="display:flex;align-items:baseline;gap:8px"><div class="score-big">' + fmt(A.overall) + '</div><div class="muted" style="font-size:20px">/ 10</div></div>'
+    + '<p class="small muted" style="margin-top:8px">Média de 6 critérios calculados por regra. Sinergia, consistência e capacidade de fechar partidas entram com a leitura de estratégia.</p></div>'
+    + '<div style="border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:10px">'
+    + '<div class="phead"><span class="small muted">Bracket estimado</span><span class="small" style="color:' + (A.bracket > state.target ? 'var(--warn)' : 'var(--good)') + '">' + (A.bracket > state.target ? 'acima do alvo' : A.bracket < state.target ? 'abaixo do alvo' : 'no alvo') + '</span></div>'
+    + '<div class="bracket">' + [1, 2, 3, 4, 5].map((n) => '<div class="' + (n === A.bracket ? 'est' : n === state.target ? 'target' : '') + '">' + n + '</div>').join('') + '</div>'
+    + '<p class="small muted">Tracejado: seu alvo. Preenchido: onde o deck está pelas regras verificáveis.</p>'
+    + A.bracketWhy.map((w) => '<p class="soft" style="font-size:15px">' + esc(w) + '</p>').join('')
+    + '<p class="small muted">Combos de duas cartas e velocidade do deck ainda não entram nesta estimativa.</p>'
+    + '</div></div>';
+  h += '<div class="panel grow3"><div class="phead"><h2 style="font-size:24px">Notas por critério</h2><span class="small muted">Clique em um critério para ver o motivo</span></div>'
+    + '<div class="row"><div style="flex:3 1 320px;min-width:0;display:flex;flex-direction:column;gap:4px">'
+    + A.scores.map((s) => '<button type="button" class="srow" data-score="' + s.id + '" aria-pressed="' + (s.id === state.sel) + '"><span class="nm">' + esc(s.name) + '</span><span class="bar"><i style="width:' + s.score * 10 + '%;background:' + toneOf(s.score) + '"></i></span><span class="val">' + fmt(s.score) + '</span></button>').join('')
+    + ['Sinergia', 'Consistência', 'Fechar partidas'].map((n) => '<button type="button" class="srow" disabled><span class="nm">' + n + '</span><span class="bar"></span><span class="val small">em breve</span></button>').join('')
+    + '</div><div class="detail"><div class="small muted">' + esc(sel.name) + '</div><div class="n" style="color:' + toneOf(sel.score) + '">' + fmt(sel.score) + '</div>'
+    + '<p class="soft" style="font-size:15px">' + esc(sel.why) + '</p><p class="small muted">Como a nota é calculada: ' + esc(sel.rule) + '</p></div></div></div></section>';
+
+  // checagens
+  h += '<section class="checks">'
+    + okChk(A.total === 100 && !A.dupes.length, '100 cartas, sem cópias repetidas', A.total !== 100 ? A.total + ' cartas no deck' : 'Há cópias repetidas')
+    + okChk(!A.offColor.length, 'Todas dentro da identidade de cor', plural(A.offColor.length, 'carta fora', 'cartas fora') + ' da identidade de cor')
+    + okChk(!A.banned.length && !A.notLegal.length, 'Nenhuma carta banida', plural(A.banned.length + A.notLegal.length, 'carta ilegal', 'cartas ilegais') + ' em Commander')
+    + '<div class="check"><div class="k" style="color:' + (!state.gcKnown ? 'var(--muted)' : A.gc.length ? 'var(--warn)' : 'var(--good)') + '">' + (!state.gcKnown ? 'Não verificado' : A.gc.length ? 'Atenção' : 'Conferido') + '</div><div style="font-size:15px">' + (!state.gcKnown ? 'Game Changers indisponíveis agora' : A.gc.length ? plural(A.gc.length, 'Game Changer', 'Game Changers') + ' na lista' : 'Nenhum Game Changer') + '</div></div>'
+    + '</section>';
+
+  // gráficos
+  h += '<section class="row"><div class="panel grow1"><div class="phead"><h2>Curva de mana</h2><span class="small muted">custo médio ' + fmt(A.avg, 2) + '</span></div><div class="curve">'
+    + A.curve.map((b) => '<button type="button" data-mv="' + b.i + '" aria-label="Custo ' + b.label + ': ' + b.n + ' cartas"><span class="mono small">' + b.n + '</span><span class="col" style="height:' + Math.round(b.n / maxCurve * 140) + 'px;background:' + (b.i >= 6 ? 'var(--low)' : 'var(--gold)') + '"></span><span class="small muted">' + b.label + '</span></button>').join('')
+    + '</div><p class="soft" style="font-size:15px">' + plural(A.top, 'carta custa', 'cartas custam') + ' 6 ou mais. Terrenos ficam fora da curva.</p></div>';
+  h += '<div class="panel grow1"><div class="phead"><h2>Funções do deck</h2><span class="small muted">faixa clara: meta</span></div><div style="display:flex;flex-direction:column;gap:6px">'
+    + FUNCS.map((f) => { const n = A.fn[f[0]]; const ok = n >= f[2]; const max = 16; return '<button type="button" class="frow" data-fn="' + f[0] + '"><span style="display:flex;justify-content:space-between;gap:8px;font-size:15px"><span class="fname">' + f[1] + '</span><span class="mono" style="color:' + (ok ? 'var(--good)' : 'var(--low)') + '">' + n + (f[2] ? ' <span class="muted">de ' + f[2] + ' a ' + f[3] + '</span>' : '') + '</span></span><span class="ftrack">' + (f[2] ? '<i style="left:' + f[2] / max * 100 + '%;width:' + (f[3] - f[2]) / max * 100 + '%;background:var(--band)"></i>' : '') + '<i style="left:0;width:' + Math.min(100, n / max * 100) + '%;background:' + (ok ? 'var(--good)' : 'var(--low)') + '"></i></span></button>'; }).join('')
+    + '</div><p class="small muted">Classificação automática pelo texto da carta. É aproximada: clique em uma função para conferir as cartas.</p></div>';
+  h += '<div class="panel grow1"><h2>Composição e mana</h2><div style="display:flex;flex-direction:column;gap:8px">'
+    + A.types.map((t) => '<div class="trow"><span class="nm">' + t.name + '</span><span class="bar"><i style="width:' + t.n / maxType * 100 + '%;background:#B9B1C6"></i></span><span class="val">' + t.n + '</span></div>').join('')
+    + '</div><div style="border-top:1px solid var(--line);padding-top:14px;display:flex;flex-direction:column;gap:10px">'
+    + '<p class="soft" style="font-size:15px">' + A.lands + ' terrenos' + (A.mdfc ? ' e ' + A.mdfc + ' MDFC com terreno no verso' : '') + '. Faixa de referência: ' + A.landLo + ' a ' + A.landHi + '.</p>'
+    + (A.colors.length > 1 ? A.colors.map((c) => '<div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;justify-content:space-between;font-size:14px"><span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c.hex + ';margin-right:8px"></span>' + c.name + '</span><span class="muted">' + Math.round(c.pipShare * 100) + '% dos símbolos · ' + c.src + ' fontes</span></div><div class="ftrack" style="height:6px"><i style="left:0;width:' + c.pipShare * 100 + '%;background:' + c.hex + '"></i></div><div class="ftrack" style="height:6px"><i style="left:0;width:' + c.srcShare * 100 + '%;background:' + c.hex + ';opacity:.55"></i></div></div>').join('') + '<p class="small muted">Barra de cima: símbolos de mana nos custos. Barra de baixo: terrenos que geram a cor.</p>'
+      : A.colors.length === 1 ? '<p class="soft" style="font-size:15px">' + A.colors[0].src + ' terrenos geram ' + A.colors[0].name.toLowerCase() + '.</p>' : '')
+    + '<p class="small muted">' + [A.colorless ? plural(A.colorless, 'terreno só gera', 'terrenos só geram') + ' incolor' : '', A.noMana ? plural(A.noMana, 'terreno não gera', 'terrenos não geram') + ' mana diretamente' : '', A.tapped ? plural(A.tapped, 'entra', 'entram') + ' sempre virado' + (A.tapped === 1 ? '' : 's') : '', A.tappedCond ? plural(A.tappedCond, 'entra virado', 'entram virados') + ' sob condição' : ''].filter(Boolean).join(' · ') + '</p>'
+    + '</div></div></section>';
+
+  // alertas
+  h += '<section style="display:flex;flex-direction:column;gap:16px"><h2 style="font-size:28px">Alertas</h2>'
+    + (A.alerts.length ? '<div class="alerts">' + A.alerts.map((a) => '<div class="alert"><div class="lvl" style="color:' + lvl[a.lvl][1] + '"><i style="background:' + lvl[a.lvl][1] + '"></i>' + lvl[a.lvl][0] + '</div><h3>' + esc(a.title) + '</h3><p class="muted" style="font-size:15px">' + esc(a.text) + '</p></div>').join('') + '</div>'
+      : '<p class="soft">Nenhum alerta pelas regras automáticas.</p>') + '</section>';
+
+  // mão inicial
+  const H = state.hand;
+  h += '<section class="panel"><div class="phead"><h2 style="font-size:24px">Mão inicial</h2><span style="font-size:15px;font-weight:600;color:' + H.color + '">' + H.verdict + '</span></div>'
+    + '<div class="hand">' + H.cards.map((d) => '<button type="button" class="cardimg" data-card="' + esc(d.key) + '" aria-label="' + esc(d.card.name) + '">' + (img(d.card, 'normal') ? '<img src="' + esc(img(d.card, 'normal')) + '" alt="' + esc(d.card.name) + '" loading="lazy">' : esc(d.card.name)) + '</button>').join('') + '</div>'
+    + '<p class="soft" style="font-size:15px">' + esc(H.note) + ' <span class="muted">Veredito por regra simples, contando só terrenos e ramp barato.</span></p>'
+    + '<div><button type="button" class="btn gold" id="btn-hand">Sortear outra mão</button></div></section>';
+
+  // lista do deck
+  const flt = state.filter;
+  const list = state.deck.filter((d) => !flt || flt.test(d));
+  const groups = [['Comandante', list.filter((d) => d.cmd)]].concat(TYPES.map((p) => [p[1], list.filter((d) => !d.cmd && mainType(d.card) === p[1])]));
+  h += '<section class="panel" id="deck"><div class="phead"><h2 style="font-size:24px">Cartas do deck</h2><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
+    + (flt ? '<span class="chip gold">' + esc(flt.label) + ' · ' + list.reduce((a, d) => a + d.qty, 0) + '</span><button type="button" class="btn" id="btn-clear">Mostrar todas</button>' : '')
+    + '<button type="button" class="btn" id="btn-copy">Copiar lista</button></div></div>'
+    + '<p class="small muted">Clique em uma carta para ver a imagem, o texto e o preço na LigaMagic.</p><div class="decklist">'
+    + groups.filter((g) => g[1].length).map((g) => '<div class="group"><h3>' + g[0] + ' · ' + g[1].reduce((a, d) => a + d.qty, 0) + '</h3>' + g[1].slice().sort((a, b) => mv(a.card) - mv(b.card) || a.card.name.localeCompare(b.card.name)).map((d) => '<div class="crow"><span class="q">' + d.qty + '</span><button type="button" data-card="' + esc(d.key) + '">' + esc(d.card.name) + '</button>' + (d.gc ? '<span class="tag gc" title="Game Changer">GC</span>' : '') + Array.from(d.tags).filter((t) => TAGNAMES[t]).slice(0, 1).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + (isLand(d.card) ? '' : '<span class="mv">' + mv(d.card) + '</span>') + '</div>').join('') + '</div>').join('')
+    + (list.length ? '' : '<p class="soft">Nenhuma carta neste filtro.</p>') + '</div></section>';
+
+  // próxima etapa
+  h += '<section class="panel" style="border-style:dashed"><h2>Na próxima etapa do site</h2><p class="soft" style="font-size:15px;max-width:720px">Leitura de estratégia com planos A, B e C, notas de sinergia e consistência, trocas sugeridas com as cartas lado a lado, lista de compras com preço estimado em real e conversa sobre o deck.</p></section>';
+
+  $('#view-diag').innerHTML = h;
+}
+
+/* ============ carta em destaque ============ */
+function openCard(key) {
+  const d = state.deck.find((x) => x.key === key); if (!d) return; const c = d.card;
+  const faces = imgs(c, 'normal');
+  $('#dlg').innerHTML = '<div class="dlg"><div class="imgs">' + (faces.length ? faces.map((u) => '<img src="' + esc(u) + '" alt="' + esc(c.name) + '">').join('') : '') + '</div>'
+    + '<div class="txt"><h2 id="dlg-name" style="font-size:24px">' + esc(c.name) + '</h2><div class="small muted">' + esc(c.type_line || '') + (manaCost(c) ? ' · ' + esc(manaCost(c)) : '') + '</div>'
+    + '<div class="oracle">' + esc(oracle(c)) + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px">' + (d.gc ? '<span class="tag gc">Game Changer</span>' : '') + Array.from(d.tags).filter((t) => TAGNAMES[t]).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:auto"><a class="btn gold" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="' + esc(liga(c)) + '">Ver preço na LigaMagic</a>'
+    + (c.scryfall_uri ? '<a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="' + esc(c.scryfall_uri) + '">Abrir no Scryfall</a>' : '')
+    + '<button type="button" class="btn" id="dlg-close">Fechar</button></div></div></div>';
+  $('#dlg').showModal();
+}
+
+/* ============ fluxo ============ */
+async function run() {
+  const text = $('#lista').value; const err = $('#entry-error'); err.hidden = true;
+  const parsed = parseList(text);
+  if (parsed.entries.length < 2) { err.textContent = 'Cole a lista do deck no campo ao lado, uma carta por linha.'; err.hidden = false; return; }
+  if (parsed.entries.length > 400) { err.textContent = 'A lista tem ' + parsed.entries.length + ' cartas diferentes. Cole só um deck de Commander.'; err.hidden = false; return; }
+  store.set({ text: text, target: state.target });
+  show('loading'); $('#prog').style.width = '4%'; $('#prog-text').textContent = 'Buscando ' + parsed.entries.length + ' cartas no Scryfall';
+  try {
+    const r = await fetchCards(parsed.entries, (done, total) => { $('#prog').style.width = Math.round(done / total * 90) + '%'; $('#prog-text').textContent = done + ' de ' + total + ' cartas'; });
+    const cards = Array.from(r.found.values());
+    let gcNames = null; state.gcKnown = cards.some((c) => typeof c.game_changer === 'boolean');
+    if (!state.gcKnown) { try { gcNames = await fetchGameChangers(); state.gcKnown = gcNames.size > 0; } catch (e) { state.gcKnown = false; } }
+    state.deck = parsed.entries.filter((e) => r.found.has(e.key)).map((e) => {
+      const c = r.found.get(e.key);
+      return { key: e.key, qty: e.qty, card: c, cmd: parsed.commanders.indexOf(e.key) >= 0, tags: tagsOf(c), gc: c.game_changer === true || !!(gcNames && gcNames.has(norm(c.name))) };
+    });
+    state.unresolved = r.unresolved; state.fixed = r.fixed; state.filter = null; state.sel = null;
+    if (!state.deck.length) throw new Error('Nenhuma carta da lista foi reconhecida.');
+    if (!state.deck.some((d) => d.cmd)) state.deck[0].cmd = true;
+    drawHand(); renderDiag(); show('diag');
+  } catch (e) {
+    show('entry');
+    err.textContent = /Nenhuma carta/.test(e.message) ? e.message + ' Confira se os nomes estão em inglês, um por linha.' : 'Não consegui consultar o Scryfall. Confira sua internet e tente de novo em alguns segundos.';
+    err.hidden = false;
+  }
+}
+
+function setFilter(label, test) { state.filter = { label: label, test: test }; renderDiag(); const el = $('#deck'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+async function copyText(text, btn) {
+  const done = () => { const old = btn.textContent; btn.textContent = 'Copiado'; setTimeout(() => { btn.textContent = old; }, 1600); };
+  try { await navigator.clipboard.writeText(text); done(); }
+  catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e2) {} ta.remove(); }
+}
+
+document.addEventListener('click', (ev) => {
+  const t = ev.target.closest('button, a'); if (!t) return;
+  if (t.dataset.b) { state.target = +t.dataset.b; renderBracketPills(); const s = store.get(); s.target = state.target; store.set(s); return; }
+  if (t.id === 'btn-go') return void run();
+  if (t.id === 'btn-new') return void show('entry');
+  if (t.id === 'dlg-close') return void $('#dlg').close();
+  if (t.dataset.score) { state.sel = t.dataset.score; const y = window.scrollY; renderDiag(); window.scrollTo(0, y); return; }
+  if (t.dataset.card) return void openCard(t.dataset.card);
+  if (t.id === 'btn-hand') { drawHand(); const y = window.scrollY; renderDiag(); window.scrollTo(0, y); return; }
+  if (t.id === 'btn-clear') { state.filter = null; const y = window.scrollY; renderDiag(); window.scrollTo(0, y); return; }
+  if (t.id === 'btn-copy') return void copyText(state.deck.map((d) => d.qty + ' ' + d.card.name).join('\n'), t);
+  if (t.dataset.fn) { const f = FUNCS.find((x) => x[0] === t.dataset.fn); return void setFilter(f[1], (d) => !isLand(d.card) && d.tags.has(f[0])); }
+  if (t.dataset.mv != null) { const i = +t.dataset.mv; return void setFilter('Custo ' + (i === 7 ? '7+' : i), (d) => !isLand(d.card) && Math.min(7, Math.floor(mv(d.card))) === i); }
+});
+document.addEventListener('change', (ev) => {
+  if (ev.target.id !== 'cmd1' && ev.target.id !== 'cmd2') return;
+  const a = $('#cmd1').value; const b = $('#cmd2').value;
+  state.deck.forEach((d) => { d.cmd = d.key === a || (b && d.key === b); });
+  drawHand(); renderDiag();
+});
+$('#dlg').addEventListener('click', (ev) => { if (ev.target === $('#dlg')) $('#dlg').close(); });
+
+(function init() {
+  const s = store.get();
+  if (s.target >= 1 && s.target <= 5) state.target = s.target;
+  if (s.text) $('#lista').value = s.text;
+  renderBracketPills();
+})();
+</script>
+</body>
+</html>
