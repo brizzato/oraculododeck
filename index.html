@@ -673,7 +673,7 @@ function openCard(key) {
 }
 
 /* ============ leitura de estratégia (IA) ============ */
-const ai = { budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
+const ai = { raw: '', budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
 const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (mais barato)'], ['claude-opus-5-5', 'Claude Opus 5.5 (mais detalhado)']];
 const BUDGETS = { eco: ['Econômico', 'Orçamento econômico: prefira cartas baratas, até cerca de R$ 30 cada.'], mod: ['Moderado', 'Orçamento moderado: evite cartas acima de cerca de R$ 150 cada.'], livre: ['Sem limite', 'Sem limite de orçamento.'] };
 const COMBOS = { nao: ['Evitar', 'Não sugira combos infinitos nem linhas degeneradas.'], sim: ['Aceito', 'O jogador aceita combos infinitos se forem coerentes com o plano.'] };
@@ -755,26 +755,53 @@ function deckContext() {
   });
   return L.join('\n');
 }
+const S = (d) => ({ type: 'string', description: d });
+const LIST = (props, req) => ({ type: 'array', items: { type: 'object', properties: props, required: req } });
+const TOOL = {
+  name: 'registrar_leitura',
+  description: 'Registra a leitura de estratégia do deck. Textos em português do Brasil; nomes de cartas em inglês, exatos. Seja conciso: uma a três frases por campo de texto.',
+  input_schema: { type: 'object', required: ['leitura', 'planos', 'notas', 'fortes', 'fracos', 'sinergias', 'top', 'trocas', 'bracket', 'veredito'], properties: {
+    leitura: S('Uma ou duas frases começando por: Estou lendo este deck como...'),
+    pergunta: S('Uma pergunta ao jogador, só se houver ambiguidade real de direção que mudaria as recomendações. Senão, string vazia.'),
+    planos: { type: 'object', properties: { a: S('Plano A'), b: S('Plano B'), c: S('Plano C') }, required: ['a', 'b', 'c'] },
+    notas: LIST({ id: { type: 'string', enum: ['sinergia', 'consistencia', 'fechar'] }, nota: { type: 'number', description: '0 a 10' }, motivo: S('Por que esta nota') }, ['id', 'nota', 'motivo']),
+    fortes: { type: 'array', items: { type: 'string' }, description: '3 a 5 pontos fortes específicos' },
+    fracos: LIST({ nivel: { type: 'string', enum: ['critico', 'moderado', 'opcional'] }, titulo: S('Título curto'), texto: S('Explicação') }, ['nivel', 'titulo', 'texto']),
+    sinergias: LIST({ cartas: { type: 'array', items: { type: 'string' } }, texto: S('A interação') }, ['cartas', 'texto']),
+    top: LIST({ carta: S('Nome da carta'), motivo: S('Uma linha') }, ['carta', 'motivo']),
+    trocas: LIST({ sai: S('Carta do deck que sai'), entra: S('Carta nova que entra'), prioridade: { type: 'string', enum: ['alta', 'media', 'baixa'] }, tipo: { type: 'string', enum: ['Auto-include', 'Upgrade forte', 'Tech interessante', 'Experimental'] }, motivo: S('O que se perde, o que se ganha e por que vale neste deck'), efeito: S('Ex.: Curva -3 · Compra +1') }, ['sai', 'entra', 'prioridade', 'tipo', 'motivo']),
+    watchlist: LIST({ carta: S('Nome'), motivo: S('Boa carta que pode ser trocada') }, ['carta', 'motivo']),
+    pessoais: LIST({ carta: S('Nome'), motivo: S('Não ideal, mas justificável') }, ['carta', 'motivo']),
+    bracket: { type: 'object', properties: { estimado: { type: 'number' }, motivo: S('Poder real contra classificação oficial') }, required: ['estimado', 'motivo'] },
+    veredito: { type: 'object', properties: { forte: S('O deck está forte?'), coerente: S('Está coerente?'), gargalo: S('Principal gargalo'), primeira: S('A primeira mudança que você faria'), quantas: S('Quantas mudanças são realmente necessárias') }, required: ['forte', 'coerente', 'gargalo', 'primeira', 'quantas'] }
+  } }
+};
+const TOOLNOTE = 'Registre sua leitura chamando a ferramenta registrar_leitura. Sinergias: 5 a 10, priorizando as menos óbvias. Top: as 10 cartas mais importantes para esta lista. Trocas: no máximo 8. Notas de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).';
 const analysisPrompt = () => deckContext() + '\n\n' + FORMAT;
 
 function parseAI(text) {
   let t = String(text || '').replace(/```(?:json)?/gi, '');
   const a = t.indexOf('{'); const b = t.lastIndexOf('}');
   if (a < 0 || b <= a) throw new Error('formato');
-  const j = JSON.parse(t.slice(a, b + 1).replace(/[“”]/g, '"'));
+  const raw = t.slice(a, b + 1); let j;
+  try { j = JSON.parse(raw); }
+  catch (e) { j = JSON.parse(raw.replace(/,\s*([}\]])/g, '$1')); }
+  return normalizeAI(j);
+}
+function normalizeAI(j) {
   if (!j || typeof j !== 'object' || (!j.leitura && !Array.isArray(j.trocas))) throw new Error('formato');
   ['notas', 'fortes', 'fracos', 'sinergias', 'top', 'trocas', 'watchlist', 'pessoais'].forEach((k) => { if (!Array.isArray(j[k])) j[k] = []; });
   j.planos = j.planos || {}; j.veredito = j.veredito || {}; j.bracket = j.bracket || {};
   return j;
 }
 
-async function callClaude(system, messages, maxTokens) {
+async function callClaude(system, messages, maxTokens, tool) {
   let res;
   try {
     res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': ai.key.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: ai.model, max_tokens: maxTokens, system: system, messages: messages })
+      body: JSON.stringify(Object.assign({ model: ai.model, max_tokens: maxTokens, system: system, messages: messages }, tool ? { tools: [tool], tool_choice: { type: 'tool', name: tool.name } } : {}))
     });
   } catch (e) { throw new Error('Não consegui falar com a Anthropic. Confira sua internet e tente de novo.'); }
   const j = await res.json().catch(() => ({}));
@@ -785,7 +812,10 @@ async function callClaude(system, messages, maxTokens) {
     if (/credit/i.test(m)) throw new Error('Sua conta da Anthropic está sem créditos. Recarregue no console e tente de novo.');
     throw new Error('A Anthropic recusou o pedido (' + res.status + ')' + (m ? ': ' + m : '.'));
   }
-  return (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+  const text = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+  if (!tool) return text;
+  const use = (j.content || []).find((b) => b.type === 'tool_use');
+  return { input: use && use.input, text: text, stop: j.stop_reason };
 }
 
 const findDeck = (name) => { const k = norm(name); return state.deck.find((d) => d.key === k || norm(d.card.name) === k || norm(d.card.name.split(' // ')[0]) === k); };
@@ -837,16 +867,21 @@ function rebuildDeck() {
 }
 
 async function runAnalysis(text) {
-  ai.error = '';
+  ai.error = ''; ai.raw = '';
   try {
     if (text == null) {
       if (!ai.key.trim()) { ai.error = 'Cole sua chave da Anthropic no campo acima.'; return; }
       ai.busy = true; rerender();
-      text = await callClaude(SYSTEM, [{ role: 'user', content: analysisPrompt() }], 8000);
-    }
+      const r = await callClaude(SYSTEM, [{ role: 'user', content: deckContext() + '\n\n' + TOOLNOTE }], 16000, TOOL);
+      ai.raw = 'stop_reason: ' + r.stop + '\n' + (r.input ? JSON.stringify(r.input) : r.text || '(resposta vazia)');
+      if (r.stop === 'max_tokens') { ai.error = 'A resposta ficou longa demais e foi cortada antes do fim. Tente gerar de novo.'; return; }
+      if (r.stop === 'refusal') { ai.error = 'O modelo se recusou a responder a este pedido.'; return; }
+      text = r.input ? JSON.stringify(r.input) : r.text;
+    } else ai.raw = String(text);
     let data;
     try { data = parseAI(text); }
     catch (e) { ai.error = 'A resposta não veio no formato esperado. ' + (ai.mode === 'paste' ? 'Copie a resposta inteira do chat, da primeira chave { até a última }, e cole de novo.' : 'Tente gerar de novo.'); return; }
+    ai.raw = '';
     ai.busy = true; rerender();
     await applyAI(data); ai.paste = '';
   } catch (e) { ai.error = e.message || 'Algo deu errado. Tente de novo.'; }
@@ -905,7 +940,7 @@ function renderAISetup() {
       + '<p class="small muted">A chave fica só neste navegador e vai direto para a Anthropic. Cada leitura desconta dos seus créditos.</p>'
       + '<div><button type="button" class="btn primary" id="btn-ai-go"' + (ai.busy ? ' disabled' : '') + '>' + (ai.busy ? 'Analisando… leva cerca de um minuto' : ai.data ? 'Gerar nova leitura' : 'Gerar leitura') + '</button></div>';
   }
-  if (ai.error) h += '<div class="notice crit">' + esc(ai.error) + '</div>';
+  if (ai.error) h += '<div class="notice crit">' + esc(ai.error) + (ai.raw ? '<details style="margin-top:8px"><summary style="cursor:pointer">Ver o que a IA respondeu</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;max-height:240px;overflow:auto;margin:8px 0 0">' + esc(ai.raw.slice(0, 3000)) + '</pre></details>' : '') + '</div>';
   return h + '</div></div></section>';
 }
 
