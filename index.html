@@ -60,7 +60,7 @@ header.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-
 .chip{display:inline-block;padding:4px 11px;border:1px solid var(--line-strong);border-radius:999px;font-size:13px;color:var(--fg-soft);white-space:nowrap}
 .chip.gold{border-color:var(--gold);color:var(--gold)}
 
-textarea,input[type=text],select{width:100%;background:var(--bg);border:1px solid var(--line-strong);border-radius:10px;color:var(--fg)}
+textarea,input[type=text],input[type=password],select{width:100%;background:var(--bg);border:1px solid var(--line-strong);border-radius:10px;color:var(--fg)}
 textarea{min-height:320px;resize:vertical;padding:16px;font-family:var(--mono);font-size:15px;line-height:1.6}
 select{min-height:44px;padding:0 12px}
 ::placeholder{color:#8F87A0}
@@ -135,6 +135,37 @@ dialog::backdrop{background:rgba(8,7,12,.72)}
 .dlg .imgs img{width:100%;min-width:0;border-radius:4.75% / 3.5%;display:block}
 .dlg .txt{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:12px}
 .oracle{white-space:pre-line;font-size:15px;color:var(--fg-soft)}
+.short{min-height:96px}
+.fld{display:flex;flex-direction:column;gap:8px}
+.lab{font-size:15px;font-weight:600}
+.pillrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.x{background:none;border:0;color:var(--muted);min-width:28px;min-height:28px;font-size:16px;line-height:1}
+.x:hover{color:var(--fg)}
+.note{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:14px;color:var(--fg-soft);border:1px solid var(--line);border-radius:8px;padding:4px 4px 4px 12px}
+.steps2{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:16px;font-size:15px}
+.steps2 li > span,.steps2 li > label{display:block}
+.steps2 li > *{margin-top:6px}
+.inline{background:none;border:0;padding:0;color:var(--gold);text-decoration:underline;font:inherit;text-align:left}
+.inline:hover{color:var(--gold-hi)}
+ul.plain,ol.plain{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:14px;font-size:15px;color:var(--fg-soft)}
+ol.num{counter-reset:n}
+ol.num li{counter-increment:n;padding-left:34px;position:relative}
+ol.num li::before{content:counter(n);position:absolute;left:0;top:0;font-family:var(--mono);color:var(--gold)}
+.swap{flex-direction:row;flex-wrap:wrap;gap:24px;align-items:center}
+.pair{flex:2 1 320px;min-width:0;display:flex;align-items:center;justify-content:center;gap:14px}
+.side{flex:0 1 160px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.side .cardimg{flex:none;width:100%;min-width:0}
+.cardimg:disabled{cursor:default;padding:10px}
+.why{flex:3 1 340px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.acts{flex:1 1 200px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.shoprow{display:flex;justify-content:space-between;align-items:center;gap:4px 16px;flex-wrap:wrap;padding:4px 14px;min-height:44px;background:var(--bg);border:1px solid var(--line);border-radius:8px;font-size:15px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:18px}
+.bubble{max-width:min(560px,100%);padding:14px 16px;border-radius:14px;font-size:15px;white-space:pre-line;border:1px solid var(--line)}
+.bubble.them{align-self:flex-start;background:var(--bg);border-bottom-left-radius:4px}
+.bubble.me{align-self:flex-end;background:var(--gold);color:#14121A;border-color:var(--gold);border-bottom-right-radius:4px;font-weight:500}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+.btn:disabled{opacity:.6;cursor:default}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--gold)}
 footer{font-size:13px;color:var(--muted)}
 @media (max-width:520px){.panel{padding:18px}.srow .nm{flex-basis:112px}.score-big{font-size:68px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -156,7 +187,7 @@ footer{font-size:13px;color:var(--muted)}
   <section class="hero">
     <div class="eyebrow">Commander / EDH</div>
     <h1>Cole sua lista. Receba o diagnóstico do deck como um sistema.</h1>
-    <p class="soft" style="font-size:18px;max-width:640px">Curva, mana, funções, checagens e bracket, calculados a partir do texto Oracle atual de cada carta.</p>
+    <p class="soft" style="font-size:18px;max-width:640px">Curva, mana, funções e bracket calculados a partir do texto Oracle atual, com leitura de estratégia e trocas justificadas.</p>
   </section>
 
   <section class="row">
@@ -184,7 +215,7 @@ footer{font-size:13px;color:var(--muted)}
   <section class="steps">
     <div><h3>O site conta os fatos</h3><p class="soft" style="font-size:15px">Total de cartas, terrenos, curva, fontes de cor, legalidade e Game Changers, direto do Scryfall.</p></div>
     <div><h3>As funções ficam visíveis</h3><p class="soft" style="font-size:15px">Ramp, compra, remoção, wipes e proteção. Clique em qualquer barra para ver quais cartas contaram.</p></div>
-    <div><h3>A leitura de estratégia vem depois</h3><p class="soft" style="font-size:15px">Planos do deck, trocas sugeridas e lista de compras entram na próxima etapa do site.</p></div>
+    <div><h3>A IA lê o plano</h3><p class="soft" style="font-size:15px">Planos do deck, trocas com as cartas lado a lado e lista de compras, usando o seu ChatGPT ou Claude.</p></div>
   </section>
 </main>
 
@@ -221,7 +252,7 @@ const BRACKETS = { 1: 'Exhibition', 2: 'Core', 3: 'Upgraded', 4: 'Optimized', 5:
 const COLORS = { W: ['Branco', '#F2E9C9'], U: ['Azul', '#5AA6E0'], B: ['Preto', '#9A8FB0'], R: ['Vermelho', '#E0654F'], G: ['Verde', '#5DAE6B'] };
 const SCRY = 'https://api.scryfall.com';
 
-const state = { target: 3, deck: [], unresolved: [], fixed: [], gcKnown: true, sel: null, filter: null, hand: null };
+const state = { target: 3, deck: [], base: [], gcNames: null, unresolved: [], fixed: [], gcKnown: true, sel: null, filter: null, hand: null };
 
 /* ============ leitura da lista ============ */
 const HEADS = { commander: 'cmd', commanders: 'cmd', comandante: 'cmd', comandantes: 'cmd', deck: 'main', main: 'main', mainboard: 'main', maindeck: 'main', 'main deck': 'main', companion: 'main', sideboard: 'side', 'side board': 'side', maybeboard: 'skip', considering: 'skip', tokens: 'skip' };
@@ -523,8 +554,9 @@ const FUNCS = [['ramp', 'Ramp', 10, 12], ['draw', 'Compra e vantagem', 10, 12], 
 
 function renderDiag() {
   const A = analyze(); state.A = A;
-  if (!state.sel || !A.scores.some((s) => s.id === state.sel)) state.sel = A.scores.slice().sort((a, b) => a.score - b.score)[0].id;
-  const sel = A.scores.find((s) => s.id === state.sel);
+  const allScores = A.scores.concat(aiScores()); const overall = allScores.reduce((a, s) => a + s.score, 0) / allScores.length;
+  if (!state.sel || !allScores.some((s) => s.id === state.sel)) state.sel = allScores.slice().sort((a, b) => a.score - b.score)[0].id;
+  const sel = allScores.find((s) => s.id === state.sel);
   const cmdNames = A.cmds.map((d) => d.card.name);
   const idText = A.identity.length ? A.identity.filter((c) => COLORS[c]).map((c) => COLORS[c][0]).join(', ') : 'Incolor';
   const cands = state.deck.filter((d) => d.cmd || (/Legendary/.test(front(d.card)) && /Creature|Planeswalker/.test(front(d.card))) || /can be your commander/i.test(oracle(d.card)));
@@ -550,12 +582,13 @@ function renderDiag() {
     + '<div><label class="small muted" for="cmd1">Principal</label><select id="cmd1">' + opt(A.cmds[0] && A.cmds[0].key, false) + '</select></div>'
     + '<div><label class="small muted" for="cmd2">Parceiro ou antecedente</label><select id="cmd2">' + opt(A.cmds[1] && A.cmds[1].key, true) + '</select></div>'
     + '</div></section>';
+  h += ai.data ? renderLeitura() : renderAISetup();
 
   // nota + bracket + notas por critério
   h += '<section class="row"><div class="panel grow1" style="gap:20px"><div>'
-    + '<div class="small muted">Nota parcial</div>'
-    + '<div style="display:flex;align-items:baseline;gap:8px"><div class="score-big">' + fmt(A.overall) + '</div><div class="muted" style="font-size:20px">/ 10</div></div>'
-    + '<p class="small muted" style="margin-top:8px">Média de 6 critérios calculados por regra. Sinergia, consistência e capacidade de fechar partidas entram com a leitura de estratégia.</p></div>'
+    + '<div class="small muted">' + (ai.data ? 'Nota geral' : 'Nota parcial') + '</div>'
+    + '<div style="display:flex;align-items:baseline;gap:8px"><div class="score-big">' + fmt(overall) + '</div><div class="muted" style="font-size:20px">/ 10</div></div>'
+    + '<p class="small muted" style="margin-top:8px">' + (ai.data ? 'Média de ' + allScores.length + ' critérios: 6 calculados por regra e os demais vindos da leitura de estratégia.' : 'Média de 6 critérios calculados por regra. Sinergia, consistência e capacidade de fechar partidas entram com a leitura de estratégia.') + '</p></div>'
     + '<div style="border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:10px">'
     + '<div class="phead"><span class="small muted">Bracket estimado</span><span class="small" style="color:' + (A.bracket > state.target ? 'var(--warn)' : 'var(--good)') + '">' + (A.bracket > state.target ? 'acima do alvo' : A.bracket < state.target ? 'abaixo do alvo' : 'no alvo') + '</span></div>'
     + '<div class="bracket">' + [1, 2, 3, 4, 5].map((n) => '<div class="' + (n === A.bracket ? 'est' : n === state.target ? 'target' : '') + '">' + n + '</div>').join('') + '</div>'
@@ -565,8 +598,8 @@ function renderDiag() {
     + '</div></div>';
   h += '<div class="panel grow3"><div class="phead"><h2 style="font-size:24px">Notas por critério</h2><span class="small muted">Clique em um critério para ver o motivo</span></div>'
     + '<div class="row"><div style="flex:3 1 320px;min-width:0;display:flex;flex-direction:column;gap:4px">'
-    + A.scores.map((s) => '<button type="button" class="srow" data-score="' + s.id + '" aria-pressed="' + (s.id === state.sel) + '"><span class="nm">' + esc(s.name) + '</span><span class="bar"><i style="width:' + s.score * 10 + '%;background:' + toneOf(s.score) + '"></i></span><span class="val">' + fmt(s.score) + '</span></button>').join('')
-    + ['Sinergia', 'Consistência', 'Fechar partidas'].map((n) => '<button type="button" class="srow" disabled><span class="nm">' + n + '</span><span class="bar"></span><span class="val small">em breve</span></button>').join('')
+    + allScores.map((s) => '<button type="button" class="srow" data-score="' + s.id + '" aria-pressed="' + (s.id === state.sel) + '"><span class="nm">' + esc(s.name) + '</span><span class="bar"><i style="width:' + s.score * 10 + '%;background:' + toneOf(s.score) + '"></i></span><span class="val">' + fmt(s.score) + '</span></button>').join('')
+    + (ai.data ? '' : ['Sinergia', 'Consistência', 'Fechar partidas'].map((n) => '<button type="button" class="srow" disabled><span class="nm">' + n + '</span><span class="bar"></span><span class="val small">com a leitura</span></button>').join(''))
     + '</div><div class="detail"><div class="small muted">' + esc(sel.name) + '</div><div class="n" style="color:' + toneOf(sel.score) + '">' + fmt(sel.score) + '</div>'
     + '<p class="soft" style="font-size:15px">' + esc(sel.why) + '</p><p class="small muted">Como a nota é calculada: ' + esc(sel.rule) + '</p></div></div></div></section>';
 
@@ -599,12 +632,17 @@ function renderDiag() {
     + (A.alerts.length ? '<div class="alerts">' + A.alerts.map((a) => '<div class="alert"><div class="lvl" style="color:' + lvl[a.lvl][1] + '"><i style="background:' + lvl[a.lvl][1] + '"></i>' + lvl[a.lvl][0] + '</div><h3>' + esc(a.title) + '</h3><p class="muted" style="font-size:15px">' + esc(a.text) + '</p></div>').join('') + '</div>'
       : '<p class="soft">Nenhum alerta pelas regras automáticas.</p>') + '</section>';
 
+  if (ai.data) h += renderInsights() + renderSwaps() + renderVerdict();
+  if (ai.data) h += renderChat();
+
   // mão inicial
   const H = state.hand;
   h += '<section class="panel"><div class="phead"><h2 style="font-size:24px">Mão inicial</h2><span style="font-size:15px;font-weight:600;color:' + H.color + '">' + H.verdict + '</span></div>'
     + '<div class="hand">' + H.cards.map((d) => '<button type="button" class="cardimg" data-card="' + esc(d.key) + '" aria-label="' + esc(d.card.name) + '">' + (img(d.card, 'normal') ? '<img src="' + esc(img(d.card, 'normal')) + '" alt="' + esc(d.card.name) + '" loading="lazy">' : esc(d.card.name)) + '</button>').join('') + '</div>'
     + '<p class="soft" style="font-size:15px">' + esc(H.note) + ' <span class="muted">Veredito por regra simples, contando só terrenos e ramp barato.</span></p>'
     + '<div><button type="button" class="btn gold" id="btn-hand">Sortear outra mão</button></div></section>';
+
+  if (ai.data) h += renderAISetup();
 
   // lista do deck
   const flt = state.filter;
@@ -617,24 +655,331 @@ function renderDiag() {
     + groups.filter((g) => g[1].length).map((g) => '<div class="group"><h3>' + g[0] + ' · ' + g[1].reduce((a, d) => a + d.qty, 0) + '</h3>' + g[1].slice().sort((a, b) => mv(a.card) - mv(b.card) || a.card.name.localeCompare(b.card.name)).map((d) => '<div class="crow"><span class="q">' + d.qty + '</span><button type="button" data-card="' + esc(d.key) + '">' + esc(d.card.name) + '</button>' + (d.gc ? '<span class="tag gc" title="Game Changer">GC</span>' : '') + Array.from(d.tags).filter((t) => TAGNAMES[t]).slice(0, 1).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + (isLand(d.card) ? '' : '<span class="mv">' + mv(d.card) + '</span>') + '</div>').join('') + '</div>').join('')
     + (list.length ? '' : '<p class="soft">Nenhuma carta neste filtro.</p>') + '</div></section>';
 
-  // próxima etapa
-  h += '<section class="panel" style="border-style:dashed"><h2>Na próxima etapa do site</h2><p class="soft" style="font-size:15px;max-width:720px">Leitura de estratégia com planos A, B e C, notas de sinergia e consistência, trocas sugeridas com as cartas lado a lado, lista de compras com preço estimado em real e conversa sobre o deck.</p></section>';
-
   $('#view-diag').innerHTML = h;
 }
 
 /* ============ carta em destaque ============ */
 function openCard(key) {
-  const d = state.deck.find((x) => x.key === key); if (!d) return; const c = d.card;
+  const inDeck = state.deck.find((x) => x.key === key); const d = inDeck || state.base.find((x) => x.key === key) || ai.pool.get(key); if (!d) return; const c = d.card; const tags = d.tags || new Set();
   const faces = imgs(c, 'normal');
   $('#dlg').innerHTML = '<div class="dlg"><div class="imgs">' + (faces.length ? faces.map((u) => '<img src="' + esc(u) + '" alt="' + esc(c.name) + '">').join('') : '') + '</div>'
     + '<div class="txt"><h2 id="dlg-name" style="font-size:24px">' + esc(c.name) + '</h2><div class="small muted">' + esc(c.type_line || '') + (manaCost(c) ? ' · ' + esc(manaCost(c)) : '') + '</div>'
     + '<div class="oracle">' + esc(oracle(c)) + '</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:6px">' + (d.gc ? '<span class="tag gc">Game Changer</span>' : '') + Array.from(d.tags).filter((t) => TAGNAMES[t]).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + '</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:auto"><a class="btn gold" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="' + esc(liga(c)) + '">Ver preço na LigaMagic</a>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px">' + (d.gc ? '<span class="tag gc">Game Changer</span>' : '') + Array.from(tags).filter((t) => TAGNAMES[t]).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + '</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:auto">' + (inDeck && !inDeck.cmd ? '<button type="button" class="btn" data-lock="' + esc(key) + '">' + (ai.locks.has(key) ? 'Liberar para troca' : 'Marcar como intocável') + '</button>' : '') + '<a class="btn gold" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="' + esc(liga(c)) + '">Ver preço na LigaMagic</a>'
     + (c.scryfall_uri ? '<a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="' + esc(c.scryfall_uri) + '">Abrir no Scryfall</a>' : '')
     + '<button type="button" class="btn" id="dlg-close">Fechar</button></div></div></div>';
   $('#dlg').showModal();
+}
+
+/* ============ leitura de estratégia (IA) ============ */
+const ai = { budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
+const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (mais barato)'], ['claude-opus-5-5', 'Claude Opus 5.5 (mais detalhado)']];
+const BUDGETS = { eco: ['Econômico', 'Orçamento econômico: prefira cartas baratas, até cerca de R$ 30 cada.'], mod: ['Moderado', 'Orçamento moderado: evite cartas acima de cerca de R$ 150 cada.'], livre: ['Sem limite', 'Sem limite de orçamento.'] };
+const COMBOS = { nao: ['Evitar', 'Não sugira combos infinitos nem linhas degeneradas.'], sim: ['Aceito', 'O jogador aceita combos infinitos se forem coerentes com o plano.'] };
+
+const SYSTEM = [
+  'Você é um especialista em deckbuilding de Magic: The Gathering, no formato Commander/EDH. Avalie o deck de forma crítica, técnica e prática. Analise o deck como um sistema, não como uma lista de cartas boas.',
+  '',
+  'Princípios:',
+  '- Descubra primeiro qual deck o jogador quer jogar: estratégia principal, subtemas e a hierarquia entre eles. Otimize essa visão, não uma versão genérica do comandante.',
+  '- Identifique o que o comandante recompensa, os planos A, B e C, as engines, a redundância útil e a inútil, as cartas que só funcionam com o comandante em campo e os subtemas que competem por slots.',
+  '- Classifique mentalmente as cartas em core, suporte, utilidade e flex. Corte flex antes de core.',
+  '- Toda sugestão responde: por que esta carta é melhor especificamente neste deck? Nunca recomende por popularidade. Diga o que se perde e o que se ganha.',
+  '- Diferencie: carta ruim; carta boa para a qual existe opção melhor; escolha pessoal válida; carta forte que não conversa com o plano.',
+  '- Use "win-more" só quando a carta exige estar muito à frente, pouco ajuda em jogo equilibrado e não ajuda a reconstruir. Um finalizador que converte vantagem em vitória não é win-more.',
+  '- Diferencie cantrip, vantagem de cartas e engine recorrente. Mana condicional não equivale a mana universal. Buscar terreno para a mão não é ramp.',
+  '- Em proteção, diga contra o que ela não protege quando isso importar.',
+  '- Respeite a curva: ao sugerir uma carta cara, corte outra carta cara. Informe o efeito de cada troca na curva e nas funções.',
+  '- Prefira refinar a reconstruir. Não force cortes; se o deck já está refinado, diga isso. No máximo 8 trocas, priorizando impacto claro. Evite upgrades marginais.',
+  '- Inclua opções menos óbvias quando elas realmente melhorarem o deck, nunca só por serem obscuras.',
+  '- Seja direto e sincero. Discorde quando houver razão técnica. Quando duas opções forem próximas, diga.',
+  '',
+  'Regras de verificação:',
+  '- Para as cartas do deck, use somente o texto Oracle fornecido. Não presuma interações que o texto não sustenta. Atenção a "enters" contra "whenever", "once each turn", "your end step" contra "each end step", efeito de substituição contra habilidade desencadeada.',
+  '- Só sugira cartas reais cujo texto Oracle atual você conhece com segurança, legais em Commander e dentro da identidade de cor do comandante. Use o nome exato em inglês. O site confere cada sugestão no Scryfall.',
+  '- Os números e a classificação de funções foram calculados pelo site. A classificação é automática e pode errar: corrija-a no seu raciocínio se o texto da carta mostrar outra coisa, mas não recalcule os totais.',
+  '- Nunca sugira remover uma carta marcada como intocável. Trate-a como restrição e considere cartas que a tornem melhor.',
+  '- Brackets: use as definições atuais da Wizards (1 Exhibition, 2 Core, 3 Upgraded, 4 Optimized, 5 cEDH). Os Game Changers do deck foram identificados pelo site.'
+].join('\n');
+
+const FORMAT = [
+  'Responda somente com um objeto JSON válido, sem texto antes ou depois e sem bloco de código. Textos em português do Brasil; nomes de cartas sempre em inglês, exatos. Formato:',
+  '{',
+  ' "leitura": "uma ou duas frases começando por: Estou lendo este deck como...",',
+  ' "pergunta": "uma pergunta ao jogador, só se houver ambiguidade real de direção que mudaria as recomendações; senão null",',
+  ' "planos": {"a": "plano A", "b": "plano B", "c": "plano C"},',
+  ' "notas": [{"id": "sinergia", "nota": 0, "motivo": "..."}, {"id": "consistencia", "nota": 0, "motivo": "..."}, {"id": "fechar", "nota": 0, "motivo": "..."}],',
+  ' "fortes": ["3 a 5 pontos fortes específicos"],',
+  ' "fracos": [{"nivel": "critico | moderado | opcional", "titulo": "...", "texto": "..."}],',
+  ' "sinergias": [{"cartas": ["Carta A", "Carta B"], "texto": "5 a 10 interações internas, priorizando as menos óbvias"}],',
+  ' "top": [{"carta": "...", "motivo": "as 10 cartas mais importantes para esta lista, uma linha cada"}],',
+  ' "trocas": [{"sai": "carta do deck", "entra": "carta nova", "prioridade": "alta | media | baixa", "tipo": "Auto-include | Upgrade forte | Tech interessante | Experimental", "motivo": "o que se perde, o que se ganha e por que vale neste deck", "efeito": "ex.: Curva -3 · Compra +1"}],',
+  ' "watchlist": [{"carta": "...", "motivo": "boa carta que pode ser trocada"}],',
+  ' "pessoais": [{"carta": "...", "motivo": "não ideal, mas justificável"}],',
+  ' "bracket": {"estimado": 3, "motivo": "2 a 4 linhas: poder real contra classificação oficial"},',
+  ' "veredito": {"forte": "...", "coerente": "...", "gargalo": "...", "primeira": "a primeira mudança que você faria", "quantas": "quantas mudanças são realmente necessárias"}',
+  '}',
+  'As notas vão de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).'
+].join('\n');
+
+function deckContext() {
+  const A = state.A; const L = [];
+  L.push('COMANDANTE: ' + A.cmds.map((d) => d.card.name).join(' + '));
+  L.push('IDENTIDADE DE COR: ' + (A.identity.join('') || 'incolor'));
+  L.push('BRACKET ALVO DO JOGADOR: ' + state.target + ' (' + BRACKETS[state.target] + ')');
+  L.push('');
+  L.push('NÚMEROS CALCULADOS PELO SITE:');
+  L.push('- Total: ' + A.total + ' cartas. Terrenos: ' + A.lands + (A.mdfc ? ' + ' + A.mdfc + ' MDFC com terreno no verso' : '') + '. Faixa de referência de terrenos: ' + A.landLo + ' a ' + A.landHi + '.');
+  L.push('- Custo médio das cartas que não são terreno: ' + A.avg.toFixed(2) + '. Curva (custo: quantidade): ' + A.curve.map((b) => b.label + ': ' + b.n).join(', ') + '.');
+  L.push('- Funções (classificação automática): ramp ' + A.fn.ramp + ', redutores de custo ' + A.fn.reducer + ', compra ' + A.fn.draw + ' (motores recorrentes: ' + A.fn.engine + '), tutores ' + A.fn.tutor + ', remoção pontual ' + A.fn.removal + ', anulações ' + A.fn.counter + ', wipes ' + A.fn.wipe + ', proteção ' + A.fn.protect + ', recursão ' + A.fn.recursion + '.');
+  L.push('- Terrenos que entram sempre virados: ' + A.tapped + '. Só incolor: ' + A.colorless + '.');
+  if (A.colors.length > 1) L.push('- Cores (símbolos nos custos / terrenos que geram): ' + A.colors.map((c) => c.c + ' ' + Math.round(c.pipShare * 100) + '% / ' + c.src).join(', ') + '.');
+  L.push('- Game Changers: ' + (A.gc.length ? A.gc.map((d) => d.card.name).join(', ') : 'nenhum') + '. Bracket pelas regras verificáveis: ' + A.bracket + '.');
+  if (A.alerts.length) L.push('- Alertas automáticos: ' + A.alerts.map((a) => a.title).join('; ') + '.');
+  L.push('');
+  L.push('PREFERÊNCIAS DO JOGADOR:');
+  L.push('- ' + BUDGETS[ai.budget][1]);
+  L.push('- ' + COMBOS[ai.combos][1]);
+  const locks = state.deck.filter((d) => ai.locks.has(d.key)).map((d) => d.card.name);
+  L.push('- Cartas intocáveis: ' + (locks.length ? locks.join(', ') : 'nenhuma declarada') + '.');
+  if (ai.committed.length) L.push('- Trocas já feitas nesta sessão (não volte atrás): ' + ai.committed.map((c) => c.out + ' -> ' + c.in).join('; ') + '.');
+  if (ai.wish.trim()) L.push('- O que o jogador quer do deck: ' + ai.wish.trim());
+  ai.notes.forEach((n) => L.push('- O jogador disse: ' + n));
+  L.push('');
+  L.push('LISTA (quantidade | nome | custo | tipo | funções automáticas | texto Oracle):');
+  state.deck.slice().sort((a, b) => (b.cmd ? 1 : 0) - (a.cmd ? 1 : 0) || mainType(a.card).localeCompare(mainType(b.card)) || mv(a.card) - mv(b.card)).forEach((d) => {
+    const c = d.card; const basic = /\bBasic\b/.test(front(c));
+    const tags = Array.from(d.tags).filter((t) => TAGNAMES[t]).map((t) => TAGNAMES[t]).join(', ');
+    L.push(d.qty + ' | ' + c.name + (d.cmd ? ' [COMANDANTE]' : '') + (ai.locks.has(d.key) ? ' [INTOCÁVEL]' : '') + ' | ' + (manaCost(c) || '-') + ' | ' + (c.type_line || '') + ' | ' + (tags || '-') + ' | ' + (basic ? '(terreno básico)' : oracle(c).replace(/\n+/g, ' / ')));
+  });
+  return L.join('\n');
+}
+const analysisPrompt = () => deckContext() + '\n\n' + FORMAT;
+
+function parseAI(text) {
+  let t = String(text || '').replace(/```(?:json)?/gi, '');
+  const a = t.indexOf('{'); const b = t.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error('formato');
+  const j = JSON.parse(t.slice(a, b + 1).replace(/[“”]/g, '"'));
+  if (!j || typeof j !== 'object' || (!j.leitura && !Array.isArray(j.trocas))) throw new Error('formato');
+  ['notas', 'fortes', 'fracos', 'sinergias', 'top', 'trocas', 'watchlist', 'pessoais'].forEach((k) => { if (!Array.isArray(j[k])) j[k] = []; });
+  j.planos = j.planos || {}; j.veredito = j.veredito || {}; j.bracket = j.bracket || {};
+  return j;
+}
+
+async function callClaude(system, messages, maxTokens) {
+  let res;
+  try {
+    res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': ai.key.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: ai.model, max_tokens: maxTokens, system: system, messages: messages })
+    });
+  } catch (e) { throw new Error('Não consegui falar com a Anthropic. Confira sua internet e tente de novo.'); }
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const m = (j.error && j.error.message) || '';
+    if (res.status === 401) throw new Error('A chave não foi aceita. Confira se colou a chave inteira, começando por sk-ant-.');
+    if (res.status === 429) throw new Error('Limite de uso atingido. Aguarde um minuto e tente de novo.');
+    if (/credit/i.test(m)) throw new Error('Sua conta da Anthropic está sem créditos. Recarregue no console e tente de novo.');
+    throw new Error('A Anthropic recusou o pedido (' + res.status + ')' + (m ? ': ' + m : '.'));
+  }
+  return (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+}
+
+const findDeck = (name) => { const k = norm(name); return state.deck.find((d) => d.key === k || norm(d.card.name) === k || norm(d.card.name.split(' // ')[0]) === k); };
+const poolEntry = (key) => ai.pool.get(key);
+
+async function applyAI(data) {
+  // trocas anteriores aceitas viram parte do deck
+  ai.swaps.filter((s) => s.status === 'accepted').forEach((s) => ai.committed.push({ out: s.out, in: s.in, inKey: s.inKey }));
+  state.base = state.deck.map((d) => Object.assign({}, d));
+  ai.data = data; ai.stale = false; ai.chat = [];
+  ai.swaps = data.trocas.filter((t) => t && t.sai && t.entra).slice(0, 12).map((t, i) => ({ id: 's' + i, out: String(t.sai), in: String(t.entra), inKey: norm(t.entra), status: 'pending', prio: String(t.prioridade || ''), tipo: String(t.tipo || ''), motivo: String(t.motivo || ''), efeito: String(t.efeito || ''), issue: null }));
+  const need = []; const seen = new Set();
+  ai.swaps.forEach((s) => { if (!ai.pool.has(s.inKey) && !seen.has(s.inKey)) { seen.add(s.inKey); need.push({ key: s.inKey, name: s.in, qty: 1 }); } });
+  let lookupFailed = false;
+  if (need.length) {
+    try {
+      const r = await fetchCards(need, () => {});
+      r.found.forEach((c, key) => ai.pool.set(key, { card: c, tags: tagsOf(c), gc: c.game_changer === true || !!(state.gcNames && state.gcNames.has(norm(c.name))) }));
+    } catch (e) { lookupFailed = true; }
+  }
+  const idSet = new Set(state.A.identity);
+  ai.swaps.forEach((s) => {
+    const out = findDeck(s.out); const p = ai.pool.get(s.inKey);
+    if (out) { s.outKey = out.key; s.out = out.card.name; }
+    if (!out) s.issue = 'A carta que sai não está na sua lista.';
+    else if (out.cmd) s.issue = 'A sugestão tira o comandante.';
+    else if (ai.locks.has(out.key)) s.issue = 'A carta que sai está marcada como intocável.';
+    else if (!p) s.issue = lookupFailed ? 'Não consegui conferir a carta nova no Scryfall agora.' : 'A carta nova não foi encontrada no Scryfall. O nome pode estar errado ou inventado.';
+    else {
+      s.in = p.card.name;
+      const dup = findDeck(p.card.name);
+      if (dup && copyLimit(p.card) === 1) s.issue = 'A carta nova já está no deck.';
+      else if ((p.card.color_identity || []).some((x) => !idSet.has(x))) s.issue = 'A carta nova está fora da identidade de cor do comandante.';
+      else if (p.card.legalities && p.card.legalities.commander !== 'legal') s.issue = 'A carta nova não é legal em Commander.';
+    }
+  });
+  rebuildDeck();
+}
+
+function rebuildDeck() {
+  const deck = (state.base || []).map((d) => Object.assign({}, d));
+  ai.swaps.filter((s) => s.status === 'accepted' && !s.issue).forEach((s) => {
+    const i = deck.findIndex((d) => d.key === s.outKey); const p = ai.pool.get(s.inKey);
+    if (i < 0 || !p) return;
+    if (deck[i].qty > 1) deck[i].qty -= 1; else deck.splice(i, 1);
+    deck.push({ key: norm(p.card.name), qty: 1, card: p.card, cmd: false, tags: p.tags, gc: p.gc });
+  });
+  state.deck = deck;
+}
+
+async function runAnalysis(text) {
+  ai.error = '';
+  try {
+    if (text == null) {
+      if (!ai.key.trim()) { ai.error = 'Cole sua chave da Anthropic no campo acima.'; return; }
+      ai.busy = true; rerender();
+      text = await callClaude(SYSTEM, [{ role: 'user', content: analysisPrompt() }], 8000);
+    }
+    let data;
+    try { data = parseAI(text); }
+    catch (e) { ai.error = 'A resposta não veio no formato esperado. ' + (ai.mode === 'paste' ? 'Copie a resposta inteira do chat, da primeira chave { até a última }, e cole de novo.' : 'Tente gerar de novo.'); return; }
+    ai.busy = true; rerender();
+    await applyAI(data); ai.paste = '';
+  } catch (e) { ai.error = e.message || 'Algo deu errado. Tente de novo.'; }
+  finally { ai.busy = false; rerender(); if (ai.data && !ai.error) { const el = $('#leitura'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
+}
+
+async function sendChat() {
+  const msg = ai.chatDraft.trim(); if (!msg) return;
+  ai.notes.push(msg); ai.chatDraft = ''; ai.stale = !!ai.data;
+  if (ai.mode !== 'key' || !ai.key.trim()) { rerender(); return; }
+  ai.chat.push({ role: 'user', text: msg }); ai.chatBusy = true; rerender();
+  try {
+    const sys = SYSTEM + '\n\nVocê está conversando com o jogador sobre este deck. Responda em português, em texto corrido e curto (até 150 palavras), sem JSON e sem listas longas. Se citar cartas, use o nome exato em inglês.\n\n' + deckContext() + (ai.data ? '\n\nSUA LEITURA ANTERIOR (JSON):\n' + JSON.stringify(ai.data) : '');
+    const reply = await callClaude(sys, ai.chat.map((m) => ({ role: m.role, content: m.text })), 1200);
+    ai.chat.push({ role: 'assistant', text: reply });
+  } catch (e) { ai.chat.push({ role: 'assistant', text: e.message, err: true }); }
+  finally { ai.chatBusy = false; rerender(); }
+}
+
+function saveAI() { const s = store.get(); s.ai = { budget: ai.budget, combos: ai.combos, mode: ai.mode, model: ai.model, remember: ai.remember, key: ai.remember ? ai.key : '' }; store.set(s); }
+function loadAI() { const s = (store.get().ai) || {}; ['budget', 'combos', 'mode', 'model', 'key'].forEach((k) => { if (typeof s[k] === 'string' && s[k]) ai[k] = s[k]; }); if (typeof s.remember === 'boolean') ai.remember = s.remember; if (!BUDGETS[ai.budget]) ai.budget = 'mod'; if (!COMBOS[ai.combos]) ai.combos = 'nao'; if (!MODELS.some((m) => m[0] === ai.model)) ai.model = MODELS[0][0]; }
+function rerender() { const y = window.scrollY; renderDiag(); window.scrollTo(0, y); }
+
+function aiScores() {
+  if (!ai.data) return [];
+  const names = { sinergia: 'Sinergia', consistencia: 'Consistência', fechar: 'Fechar partidas' };
+  return ai.data.notas.filter((n) => n && names[n.id] && isFinite(Number(n.nota))).map((n) => ({ id: n.id, name: names[n.id], score: clamp(Number(n.nota), 0, 10), why: String(n.motivo || ''), rule: 'Avaliação da leitura de estratégia, sem régua fixa.' }));
+}
+
+/* ---------- telas da leitura ---------- */
+const pillsFor = (field, map) => Object.keys(map).map((k) => '<button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="' + field + ':' + k + '" aria-pressed="' + (ai[field] === k) + '">' + map[k][0] + '</button>').join('');
+const cardBtn = (card, key, name) => '<button type="button" class="cardimg" ' + (card ? 'data-card="' + esc(key) + '"' : 'disabled') + ' aria-label="' + esc(name) + '">' + (card && img(card, 'normal') ? '<img src="' + esc(img(card, 'normal')) + '" alt="' + esc(name) + '" loading="lazy">' : esc(name)) + '</button>';
+const cardLink = (name) => { const d = findDeck(name); return d ? '<button type="button" class="inline" data-card="' + esc(d.key) + '">' + esc(d.card.name) + '</button>' : esc(name); };
+
+function renderAISetup() {
+  const locks = state.deck.filter((d) => ai.locks.has(d.key));
+  let h = '<section class="panel" id="ai"><div class="phead"><h2 style="font-size:24px">' + (ai.data ? 'Refazer a leitura' : 'Leitura de estratégia') + '</h2><span class="small muted">feita por IA, com os números do site e o texto de cada carta</span></div><div class="row">';
+  h += '<div style="flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:16px">'
+    + '<div class="fld"><span class="lab">Orçamento para trocas</span><div class="pillrow">' + pillsFor('budget', BUDGETS) + '</div></div>'
+    + '<div class="fld"><span class="lab">Combos infinitos</span><div class="pillrow">' + pillsFor('combos', COMBOS) + '</div></div>'
+    + '<div class="fld"><label class="lab" for="wish">O que você quer deste deck (opcional)</label><textarea id="wish" class="short" placeholder="Ex.: quero manter o tema de Anjos e usar tokens só como plano secundário.">' + esc(ai.wish) + '</textarea></div>'
+    + (locks.length ? '<div class="fld"><span class="lab">Cartas intocáveis</span><div class="pillrow">' + locks.map((d) => '<span class="chip">' + esc(d.card.name) + ' <button type="button" class="x" data-unlock="' + esc(d.key) + '" aria-label="Liberar ' + esc(d.card.name) + '">×</button></span>').join('') + '</div></div>' : '<p class="small muted">Para travar uma carta, abra-a na lista do deck e clique em "Marcar como intocável".</p>')
+    + (ai.notes.length ? '<div class="fld"><span class="lab">O que você já disse</span>' + ai.notes.map((n, i) => '<div class="note"><span>' + esc(n) + '</span><button type="button" class="x" data-delnote="' + i + '" aria-label="Remover">×</button></div>').join('') + '</div>' : '')
+    + '</div>';
+  h += '<div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:16px"><div class="fld"><span class="lab">Como rodar a leitura</span><div class="pillrow">'
+    + '<button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="mode:paste" aria-pressed="' + (ai.mode === 'paste') + '">Meu ChatGPT ou Claude</button>'
+    + '<button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="mode:key" aria-pressed="' + (ai.mode === 'key') + '">Minha chave da Anthropic</button></div></div>';
+  if (ai.mode === 'paste') {
+    h += '<ol class="steps2"><li><button type="button" class="btn primary" id="btn-copy-prompt">' + (ai.copied === 'prompt' ? 'Pedido copiado' : 'Copiar pedido') + '</button><span class="small muted">Copia os números do deck, as cartas e as instruções.</span></li>'
+      + '<li><span>Cole no seu chat (ChatGPT, Claude ou outro), espere a resposta e copie-a inteira.</span></li>'
+      + '<li><label for="paste">Cole a resposta aqui:</label><textarea id="paste" class="short" spellcheck="false" placeholder="{ &quot;leitura&quot;: ... }">' + esc(ai.paste) + '</textarea><div><button type="button" class="btn gold" id="btn-paste-go"' + (ai.busy ? ' disabled' : '') + '>' + (ai.busy ? 'Conferindo as cartas…' : 'Mostrar leitura') + '</button></div></li></ol>';
+  } else {
+    h += '<div class="fld"><label class="lab" for="apikey">Chave da Anthropic</label><input type="password" id="apikey" autocomplete="off" placeholder="sk-ant-..." value="' + esc(ai.key) + '" style="min-height:44px;padding:0 14px"></div>'
+      + '<div class="fld"><label class="lab" for="model">Modelo</label><select id="model">' + MODELS.map((m) => '<option value="' + m[0] + '"' + (ai.model === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select></div>'
+      + '<label class="small" style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="remember"' + (ai.remember ? ' checked' : '') + '> Lembrar a chave neste navegador</label>'
+      + '<p class="small muted">A chave fica só neste navegador e vai direto para a Anthropic. Cada leitura desconta dos seus créditos.</p>'
+      + '<div><button type="button" class="btn primary" id="btn-ai-go"' + (ai.busy ? ' disabled' : '') + '>' + (ai.busy ? 'Analisando… leva cerca de um minuto' : ai.data ? 'Gerar nova leitura' : 'Gerar leitura') + '</button></div>';
+  }
+  if (ai.error) h += '<div class="notice crit">' + esc(ai.error) + '</div>';
+  return h + '</div></div></section>';
+}
+
+function renderLeitura() {
+  const D = ai.data; const P = D.planos;
+  const plan = (k, t) => t ? '<div style="display:flex;gap:14px"><div class="mono small" style="color:var(--gold);min-width:62px">Plano ' + k + '</div><div style="font-size:15px">' + esc(t) + '</div></div>' : '';
+  return '<section class="row" id="leitura"><div class="panel grow3"><div class="eyebrow">Leitura do deck</div><p style="font-family:var(--display);font-size:21px;line-height:1.45;color:var(--fg-soft)">' + esc(D.leitura || '') + '</p>'
+    + (ai.stale ? '<div class="notice">O deck ou suas preferências mudaram desde esta leitura. <button type="button" class="inline" data-goto="ai">Refazer a leitura</button></div>' : '')
+    + '</div><div class="panel grow2">' + plan('A', P.a) + plan('B', P.b) + plan('C', P.c) + '</div></section>';
+}
+
+function renderInsights() {
+  const D = ai.data; const lv = { critico: ['Crítico', 'var(--crit)'], moderado: ['Moderado', 'var(--warn)'], opcional: ['Opcional', 'var(--info)'] };
+  let h = '<section class="row"><div class="panel grow1"><h2>Pontos fortes</h2><ul class="plain">' + D.fortes.map((f) => '<li>' + esc(f) + '</li>').join('') + '</ul></div>'
+    + '<div class="panel grow1"><h2>Pontos fracos</h2><ul class="plain">' + D.fracos.map((f) => { const l = lv[norm(f.nivel || '')] || lv.moderado; return '<li><span class="mono small" style="color:' + l[1] + ';letter-spacing:.06em;text-transform:uppercase">' + l[0] + '</span><br><strong>' + esc(f.titulo || '') + '</strong> ' + esc(f.texto || '') + '</li>'; }).join('') + '</ul></div></section>';
+  h += '<section class="row"><div class="panel grow3"><h2>Sinergias mais importantes</h2><ul class="plain">' + D.sinergias.map((s) => '<li><strong>' + (s.cartas || []).map(cardLink).join(' + ') + '</strong><br>' + esc(s.texto || '') + '</li>').join('') + '</ul></div>'
+    + '<div class="panel grow2"><h2>Top 10 cartas desta lista</h2><ol class="plain num">' + D.top.slice(0, 10).map((t) => '<li><strong>' + cardLink(t.carta || '') + '</strong><br><span class="muted">' + esc(t.motivo || '') + '</span></li>').join('') + '</ol></div></section>';
+  return h;
+}
+
+function shopItems() {
+  const items = ai.committed.map((c) => ({ name: c.in, key: c.inKey }));
+  ai.swaps.forEach((s) => { if (s.issue || s.status === 'kept') return; if (ai.shop === 'all' || s.status === 'accepted') items.push({ name: s.in, key: s.inKey }); });
+  return items;
+}
+
+function renderSwaps() {
+  const D = ai.data; const n = (st) => ai.swaps.filter((s) => !s.issue && s.status === st).length;
+  let h = '<section style="display:flex;flex-direction:column;gap:16px" id="trocas"><div class="phead"><h2 style="font-size:28px">Trocas sugeridas</h2><span class="muted" style="font-size:15px">' + n('accepted') + ' aceitas · ' + n('kept') + ' travadas · ' + n('pending') + ' em aberto</span></div>';
+  if (!ai.swaps.length) h += '<p class="soft">A leitura não sugeriu trocas. O deck já está refinado para o que você pediu.</p>';
+  ai.swaps.forEach((s) => {
+    const out = s.outKey ? (state.base.find((d) => d.key === s.outKey) || {}).card : null; const p = ai.pool.get(s.inKey); const inC = p && p.card;
+    h += '<div class="panel swap" style="' + (s.status === 'accepted' ? 'border-color:var(--good)' : s.issue ? 'opacity:.75' : '') + '"><div class="pair">'
+      + '<div class="side"><div class="mono small" style="letter-spacing:.08em;color:var(--crit)">SAI</div>' + cardBtn(out, s.outKey, s.out) + '<div class="small muted">' + (out ? esc(mainType(out)) + (isLand(out) ? '' : ' · custo ' + mv(out)) : '&nbsp;') + '</div></div>'
+      + '<div class="muted" style="font-size:24px" aria-hidden="true">→</div>'
+      + '<div class="side"><div class="mono small" style="letter-spacing:.08em;color:var(--good)">ENTRA</div>' + cardBtn(inC, s.inKey, s.in) + '<div class="small muted">' + (inC ? esc(mainType(inC)) + (isLand(inC) ? '' : ' · custo ' + mv(inC)) : '&nbsp;') + '</div></div></div>'
+      + '<div class="why"><div class="pillrow">' + (s.tipo ? '<span class="chip gold">' + esc(s.tipo) + '</span>' : '') + (s.prio ? '<span class="chip">Prioridade ' + esc(s.prio) + '</span>' : '') + (s.efeito ? '<span class="chip">' + esc(s.efeito) + '</span>' : '') + '</div>'
+      + '<p class="soft" style="font-size:15px">' + esc(s.motivo) + '</p>' + (s.issue ? '<div class="notice crit small">Sugestão descartada: ' + esc(s.issue) + '</div>' : '') + '</div><div class="acts">';
+    if (!s.issue && s.status === 'pending') h += '<button type="button" class="btn primary" data-accept="' + s.id + '">Aceitar troca</button><button type="button" class="btn" data-keep="' + s.id + '">Manter ' + esc(s.out) + '</button>';
+    else if (!s.issue) h += '<div style="font-size:15px;font-weight:600;color:' + (s.status === 'accepted' ? 'var(--good)' : 'var(--gold)') + '">' + (s.status === 'accepted' ? 'Troca aceita' : esc(s.out) + ' fica travada') + '</div><button type="button" class="btn" data-undo="' + s.id + '">Desfazer</button>';
+    if (inC) h += '<a class="small" target="_blank" rel="noopener" href="' + esc(liga(inC)) + '" style="display:inline-flex;align-items:center;min-height:44px">Ver preço na LigaMagic</a>';
+    h += '</div></div>';
+  });
+  // lista de compras
+  const items = shopItems();
+  h += '<div class="panel" style="border-color:var(--gold)"><div class="row"><div style="flex:3 1 360px;min-width:0;display:flex;flex-direction:column;gap:14px"><div class="phead" style="align-items:center"><h3 style="font-size:24px">Lista de compras</h3><div class="pillrow">'
+    + '<button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="shop:all" aria-pressed="' + (ai.shop === 'all') + '">Todas as sugeridas</button><button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="shop:accepted" aria-pressed="' + (ai.shop === 'accepted') + '">Só as aceitas</button></div></div>'
+    + '<p class="muted" style="font-size:15px">Só as cartas novas, sem o resto do deck, prontas para colar em uma loja.</p>'
+    + (items.length ? '<div style="display:flex;flex-direction:column;gap:6px">' + items.map((it) => { const p = ai.pool.get(it.key); return '<div class="shoprow"><span class="mono" style="flex:1 1 200px;min-width:0">1 ' + esc(it.name) + '</span>' + (p ? '<a target="_blank" rel="noopener" href="' + esc(liga(p.card)) + '">Ver preço na LigaMagic</a>' : '') + '</div>'; }).join('') + '</div>'
+      : '<div class="notice" style="border-style:dashed;border-color:var(--line-strong)">Nenhuma troca aceita ainda. Aceite uma troca acima ou veja todas as sugeridas.</div>')
+    + '</div><div style="flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:8px;justify-content:center">'
+    + '<button type="button" class="btn primary" id="btn-copy-shop"' + (items.length ? '' : ' disabled') + '>Copiar só as novas</button><button type="button" class="btn" data-copydeck="1">Copiar deck atualizado</button>'
+    + (ai.stale ? '<button type="button" class="btn gold" data-goto="ai">Reanalisar com as mudanças</button>' : '') + '</div></div></div>';
+  const side = (title, list) => list.length ? '<div class="panel grow1"><h2>' + title + '</h2><ul class="plain">' + list.map((w) => '<li><strong>' + cardLink(w.carta || '') + '</strong><br><span class="muted">' + esc(w.motivo || '') + '</span></li>').join('') + '</ul></div>' : '';
+  h += '<div class="row">' + side('Lista de observação', D.watchlist) + side('Escolhas pessoais válidas', D.pessoais) + '</div></section>';
+  return h;
+}
+
+function renderVerdict() {
+  const V = ai.data.veredito; const B = ai.data.bracket;
+  const q = (t, a) => a ? '<div><div class="small muted">' + t + '</div><div style="font-size:15px">' + esc(a) + '</div></div>' : '';
+  return '<section class="panel"><h2 style="font-size:24px">Veredito</h2><div class="vgrid">' + q('O deck está forte?', V.forte) + q('Está coerente?', V.coerente) + q('Principal gargalo', V.gargalo) + q('Primeira mudança', V.primeira) + q('Quantas mudanças são necessárias', V.quantas) + q('Bracket segundo a leitura' + (B.estimado ? ': ' + esc(B.estimado) : ''), B.motivo) + '</div></section>';
+}
+
+function renderChat() {
+  const D = ai.data; const key = ai.mode === 'key';
+  let h = '<section class="panel" id="conversa"><h2 style="font-size:24px">Conversa sobre a estratégia</h2>';
+  if (D && D.pergunta) h += '<div class="bubble them">' + esc(D.pergunta) + '</div>';
+  ai.chat.forEach((m) => { h += '<div class="bubble ' + (m.role === 'user' ? 'me' : 'them') + '"' + (m.err ? ' style="border-color:var(--crit)"' : '') + '>' + esc(m.text) + '</div>'; });
+  if (ai.chatBusy) h += '<div class="bubble them muted">Pensando…</div>';
+  h += '<div style="display:flex;gap:8px;flex-wrap:wrap"><label for="chatmsg" class="sr">Sua mensagem</label><input type="text" id="chatmsg" placeholder="' + (key ? 'Pergunte ou explique o que você quer do deck' : 'Responda ou diga o que você quer do deck') + '" value="' + esc(ai.chatDraft) + '" style="flex:1 1 240px;min-width:0;min-height:44px;padding:0 14px">'
+    + '<button type="button" class="btn" id="btn-chat"' + (ai.chatBusy ? ' disabled' : '') + '>' + (key ? 'Enviar' : 'Registrar') + '</button></div>'
+    + '<p class="small muted">' + (key ? 'Tudo o que você disser aqui também entra como preferência na próxima leitura.' : 'No modo copiar e colar, a conversa acontece no seu chat. O que você registrar aqui entra no próximo pedido que copiar.') + '</p></section>';
+  return h;
 }
 
 /* ============ fluxo ============ */
@@ -643,7 +988,7 @@ async function run() {
   const parsed = parseList(text);
   if (parsed.entries.length < 2) { err.textContent = 'Cole a lista do deck no campo ao lado, uma carta por linha.'; err.hidden = false; return; }
   if (parsed.entries.length > 400) { err.textContent = 'A lista tem ' + parsed.entries.length + ' cartas diferentes. Cole só um deck de Commander.'; err.hidden = false; return; }
-  store.set({ text: text, target: state.target });
+  { const s0 = store.get(); s0.text = text; s0.target = state.target; store.set(s0); }
   show('loading'); $('#prog').style.width = '4%'; $('#prog-text').textContent = 'Buscando ' + parsed.entries.length + ' cartas no Scryfall';
   try {
     const r = await fetchCards(parsed.entries, (done, total) => { $('#prog').style.width = Math.round(done / total * 90) + '%'; $('#prog-text').textContent = done + ' de ' + total + ' cartas'; });
@@ -654,9 +999,11 @@ async function run() {
       const c = r.found.get(e.key);
       return { key: e.key, qty: e.qty, card: c, cmd: parsed.commanders.indexOf(e.key) >= 0, tags: tagsOf(c), gc: c.game_changer === true || !!(gcNames && gcNames.has(norm(c.name))) };
     });
-    state.unresolved = r.unresolved; state.fixed = r.fixed; state.filter = null; state.sel = null;
+    state.unresolved = r.unresolved; state.fixed = r.fixed; state.filter = null; state.sel = null; state.gcNames = gcNames;
+    Object.assign(ai, { data: null, swaps: [], committed: [], pool: new Map(), chat: [], notes: [], locks: new Set(), stale: false, error: '', paste: '', chatDraft: '', busy: false });
     if (!state.deck.length) throw new Error('Nenhuma carta da lista foi reconhecida.');
     if (!state.deck.some((d) => d.cmd)) state.deck[0].cmd = true;
+    state.base = state.deck.map((d) => Object.assign({}, d));
     drawHand(); renderDiag(); show('diag');
   } catch (e) {
     show('entry');
@@ -683,22 +1030,51 @@ document.addEventListener('click', (ev) => {
   if (t.dataset.card) return void openCard(t.dataset.card);
   if (t.id === 'btn-hand') { drawHand(); const y = window.scrollY; renderDiag(); window.scrollTo(0, y); return; }
   if (t.id === 'btn-clear') { state.filter = null; const y = window.scrollY; renderDiag(); window.scrollTo(0, y); return; }
-  if (t.id === 'btn-copy') return void copyText(state.deck.map((d) => d.qty + ' ' + d.card.name).join('\n'), t);
+  if (t.dataset.set) { const fv = t.dataset.set.split(':'); ai[fv[0]] = fv[1]; if (fv[0] !== 'shop') { ai.error = ''; if (ai.data && fv[0] !== 'mode') ai.stale = true; saveAI(); } return void rerender(); }
+  if (t.id === 'btn-copy-prompt') return void copyText(SYSTEM + '\n\n' + analysisPrompt(), t);
+  if (t.id === 'btn-paste-go') { if (!ai.paste.trim()) { ai.error = 'Cole a resposta do chat no campo acima.'; return void rerender(); } return void runAnalysis(ai.paste); }
+  if (t.id === 'btn-ai-go') return void runAnalysis(null);
+  if (t.dataset.accept || t.dataset.keep || t.dataset.undo) {
+    const sw = ai.swaps.find((x) => x.id === (t.dataset.accept || t.dataset.keep || t.dataset.undo)); if (!sw) return;
+    if (t.dataset.accept) sw.status = 'accepted';
+    else if (t.dataset.keep) { sw.status = 'kept'; ai.locks.add(sw.outKey); }
+    else { if (sw.status === 'kept') ai.locks.delete(sw.outKey); sw.status = 'pending'; }
+    ai.stale = true; rebuildDeck(); return void rerender();
+  }
+  if (t.dataset.goto) { const el = $('#' + t.dataset.goto); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (t.id === 'btn-copy-shop') return void copyText(shopItems().map((it) => '1 ' + it.name).join('\n'), t);
+  if (t.id === 'btn-chat') return void sendChat();
+  if (t.dataset.delnote != null) { ai.notes.splice(+t.dataset.delnote, 1); ai.stale = !!ai.data; return void rerender(); }
+  if (t.dataset.unlock) { ai.locks.delete(t.dataset.unlock); ai.stale = !!ai.data; return void rerender(); }
+  if (t.dataset.lock) { if (ai.locks.has(t.dataset.lock)) ai.locks.delete(t.dataset.lock); else ai.locks.add(t.dataset.lock); ai.stale = !!ai.data; $('#dlg').close(); return void rerender(); }
+  if (t.id === 'btn-copy' || t.dataset.copydeck) return void copyText(state.deck.map((d) => d.qty + ' ' + d.card.name).join('\n'), t);
   if (t.dataset.fn) { const f = FUNCS.find((x) => x[0] === t.dataset.fn); return void setFilter(f[1], (d) => !isLand(d.card) && d.tags.has(f[0])); }
   if (t.dataset.mv != null) { const i = +t.dataset.mv; return void setFilter('Custo ' + (i === 7 ? '7+' : i), (d) => !isLand(d.card) && Math.min(7, Math.floor(mv(d.card))) === i); }
 });
 document.addEventListener('change', (ev) => {
+  if (ev.target.id === 'model') { ai.model = ev.target.value; return void saveAI(); }
+  if (ev.target.id === 'remember') { ai.remember = ev.target.checked; return void saveAI(); }
   if (ev.target.id !== 'cmd1' && ev.target.id !== 'cmd2') return;
   const a = $('#cmd1').value; const b = $('#cmd2').value;
-  state.deck.forEach((d) => { d.cmd = d.key === a || (b && d.key === b); });
+  state.base.forEach((d) => { d.cmd = d.key === a || (!!b && d.key === b); });
+  rebuildDeck(); if (ai.data) ai.stale = true;
   drawHand(); renderDiag();
 });
+document.addEventListener('input', (ev) => {
+  const id = ev.target.id;
+  if (id === 'wish') { ai.wish = ev.target.value; if (ai.data) ai.stale = true; }
+  else if (id === 'paste') ai.paste = ev.target.value;
+  else if (id === 'apikey') { ai.key = ev.target.value; saveAI(); }
+  else if (id === 'chatmsg') ai.chatDraft = ev.target.value;
+});
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.id === 'chatmsg') { ev.preventDefault(); sendChat(); } });
 $('#dlg').addEventListener('click', (ev) => { if (ev.target === $('#dlg')) $('#dlg').close(); });
 
 (function init() {
   const s = store.get();
   if (s.target >= 1 && s.target <= 5) state.target = s.target;
   if (s.text) $('#lista').value = s.text;
+  loadAI();
   renderBracketPills();
 })();
 </script>
