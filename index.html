@@ -776,7 +776,8 @@ const TOOL = {
     veredito: { type: 'object', properties: { forte: S('O deck está forte?'), coerente: S('Está coerente?'), gargalo: S('Principal gargalo'), primeira: S('A primeira mudança que você faria'), quantas: S('Quantas mudanças são realmente necessárias') }, required: ['forte', 'coerente', 'gargalo', 'primeira', 'quantas'] }
   } }
 };
-const TOOLNOTE = 'Registre sua leitura chamando a ferramenta registrar_leitura. Sinergias: 5 a 10, priorizando as menos óbvias. Top: as 10 cartas mais importantes para esta lista. Trocas: no máximo 8. Notas de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).';
+(function strict(n) { if (!n || typeof n !== 'object') return; if (n.type === 'object') { n.additionalProperties = false; Object.keys(n.properties || {}).forEach((k) => strict(n.properties[k])); } if (n.type === 'array') strict(n.items); })(TOOL.input_schema);
+const TOOLNOTE = 'Responda com a leitura no formato JSON pedido. Textos em português do Brasil, concisos (uma a três frases por campo); nomes de cartas em inglês, exatos. Se não houver pergunta ao jogador, deixe o campo pergunta vazio. Sinergias: 5 a 10, priorizando as menos óbvias. Top: as 10 cartas mais importantes para esta lista. Trocas: no máximo 8. Notas de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).';
 const analysisPrompt = () => deckContext() + '\n\n' + FORMAT;
 
 function parseAI(text) {
@@ -795,13 +796,13 @@ function normalizeAI(j) {
   return j;
 }
 
-async function callClaude(system, messages, maxTokens, tool) {
+async function callClaude(system, messages, maxTokens, schema) {
   let res;
   try {
     res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': ai.key.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify(Object.assign({ model: ai.model, max_tokens: maxTokens, system: system, messages: messages }, tool ? { tools: [tool], tool_choice: { type: 'tool', name: tool.name } } : {}))
+      body: JSON.stringify(Object.assign({ model: ai.model, max_tokens: maxTokens, system: system, messages: messages }, schema ? { output_config: { format: { type: 'json_schema', schema: schema } } } : {}))
     });
   } catch (e) { throw new Error('Não consegui falar com a Anthropic. Confira sua internet e tente de novo.'); }
   const j = await res.json().catch(() => ({}));
@@ -813,9 +814,8 @@ async function callClaude(system, messages, maxTokens, tool) {
     throw new Error('A Anthropic recusou o pedido (' + res.status + ')' + (m ? ': ' + m : '.'));
   }
   const text = (j.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
-  if (!tool) return text;
-  const use = (j.content || []).find((b) => b.type === 'tool_use');
-  return { input: use && use.input, text: text, stop: j.stop_reason };
+  if (!schema) return text;
+  return { text: text, stop: j.stop_reason };
 }
 
 const findDeck = (name) => { const k = norm(name); return state.deck.find((d) => d.key === k || norm(d.card.name) === k || norm(d.card.name.split(' // ')[0]) === k); };
@@ -872,11 +872,11 @@ async function runAnalysis(text) {
     if (text == null) {
       if (!ai.key.trim()) { ai.error = 'Cole sua chave da Anthropic no campo acima.'; return; }
       ai.busy = true; rerender();
-      const r = await callClaude(SYSTEM, [{ role: 'user', content: deckContext() + '\n\n' + TOOLNOTE }], 16000, TOOL);
-      ai.raw = 'stop_reason: ' + r.stop + '\n' + (r.input ? JSON.stringify(r.input) : r.text || '(resposta vazia)');
+      const r = await callClaude(SYSTEM, [{ role: 'user', content: deckContext() + '\n\n' + TOOLNOTE }], 16000, TOOL.input_schema);
+      ai.raw = 'stop_reason: ' + r.stop + '\n' + (r.text || '(resposta vazia)');
       if (r.stop === 'max_tokens') { ai.error = 'A resposta ficou longa demais e foi cortada antes do fim. Tente gerar de novo.'; return; }
       if (r.stop === 'refusal') { ai.error = 'O modelo se recusou a responder a este pedido.'; return; }
-      text = r.input ? JSON.stringify(r.input) : r.text;
+      text = r.text;
     } else ai.raw = String(text);
     let data;
     try { data = parseAI(text); }
