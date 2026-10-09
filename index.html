@@ -234,7 +234,7 @@ footer{font-size:13px;color:var(--muted)}
 <!-- DIAGNÓSTICO -->
 <main id="view-diag" hidden style="display:flex;flex-direction:column;gap:28px"></main>
 
-<footer>Dados e imagens das cartas: Scryfall. Magic: The Gathering pertence à Wizards of the Coast. Site de fãs, sem vínculo com a Wizards. <span id="versao">Versão 09/10 12:40</span></footer>
+<footer>Dados e imagens das cartas: Scryfall. Magic: The Gathering pertence à Wizards of the Coast. Site de fãs, sem vínculo com a Wizards. <span id="versao">Versão 09/10 14:30</span></footer>
 </div>
 
 <dialog id="dlg" aria-labelledby="dlg-name"></dialog>
@@ -662,7 +662,7 @@ function renderDiag() {
     + (flt ? '<span class="chip gold">' + esc(flt.label) + ' · ' + list.reduce((a, d) => a + d.qty, 0) + '</span><button type="button" class="btn" id="btn-clear">Mostrar todas</button>' : '')
     + '<button type="button" class="btn" id="btn-copy">Copiar lista</button></div></div>'
     + '<p class="small muted">Clique em uma carta para ver a imagem, o texto e o preço na LigaMagic.</p><div class="decklist">'
-    + groups.filter((g) => g[1].length).map((g) => '<div class="group"><h3>' + g[0] + ' · ' + g[1].reduce((a, d) => a + d.qty, 0) + '</h3>' + g[1].slice().sort((a, b) => mv(a.card) - mv(b.card) || a.card.name.localeCompare(b.card.name)).map((d) => '<div class="crow"><span class="q">' + d.qty + '</span><button type="button" data-card="' + esc(d.key) + '">' + esc(d.card.name) + '</button>' + (d.gc ? '<span class="tag gc" title="Game Changer">GC</span>' : '') + Array.from(d.tags).filter((t) => TAGNAMES[t]).slice(0, 1).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + (isLand(d.card) ? '' : '<span class="mv">' + mv(d.card) + '</span>') + '</div>').join('') + '</div>').join('')
+    + groups.filter((g) => g[1].length).map((g) => '<div class="group"><h3>' + g[0] + ' · ' + g[1].reduce((a, d) => a + d.qty, 0) + '</h3>' + g[1].slice().sort((a, b) => mv(a.card) - mv(b.card) || a.card.name.localeCompare(b.card.name)).map((d) => '<div class="crow"><span class="q">' + d.qty + '</span><button type="button" data-card="' + esc(d.key) + '">' + esc(d.card.name) + '</button>' + (d.gc ? '<span class="tag gc" title="Game Changer">GC</span>' : '') + reviewTag(d.card.name) + Array.from(d.tags).filter((t) => TAGNAMES[t]).slice(0, 1).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + (isLand(d.card) ? '' : '<span class="mv">' + mv(d.card) + '</span>') + '</div>').join('') + '</div>').join('')
     + (list.length ? '' : '<p class="soft">Nenhuma carta neste filtro.</p>') + '</div></section>';
 
   $('#view-diag').innerHTML = h;
@@ -676,7 +676,8 @@ function openCard(key) {
   $('#dlg').innerHTML = '<div class="dlg"><div class="imgs">' + (faces.length ? faces.map((u) => '<img src="' + esc(u) + '" alt="' + esc(c.name) + '">').join('') : '') + '</div>'
     + '<div class="txt"><h2 id="dlg-name" style="font-size:24px">' + esc(c.name) + '</h2><div class="small muted">' + esc(c.type_line || '') + (manaCost(c) ? ' · ' + esc(manaCost(c)) : '') + '</div>'
     + '<div class="oracle">' + esc(oracle(c)) + '</div>'
-    + '<div style="display:flex;flex-wrap:wrap;gap:6px">' + (d.gc ? '<span class="tag gc">Game Changer</span>' : '') + Array.from(tags).filter((t) => TAGNAMES[t]).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + '</div>'
+    + (() => { const r = reviewOf(c.name); return r ? '<div class="small" style="border:1px solid var(--line);border-radius:8px;padding:10px 12px"><span class="muted">Papel no deck segundo a leitura: </span>' + esc(r.papel || '') + (r.nota ? '<br>' + esc(r.nota) : '') + '</div>' : ''; })()
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px">' + (d.gc ? '<span class="tag gc">Game Changer</span>' : '') + reviewTag(c.name) + Array.from(tags).filter((t) => TAGNAMES[t]).map((t) => '<span class="tag">' + TAGNAMES[t] + '</span>').join('') + '</div>'
     + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:auto">' + (inDeck && !inDeck.cmd ? '<button type="button" class="btn" data-lock="' + esc(key) + '">' + (ai.locks.has(key) ? 'Liberar para troca' : 'Marcar como intocável') + '</button>' : '') + '<a class="btn gold" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="' + esc(liga(c)) + '">Ver preço na LigaMagic</a>'
     + (c.scryfall_uri ? '<a class="btn" style="display:inline-flex;align-items:center;text-decoration:none" target="_blank" rel="noopener" href="' + esc(c.scryfall_uri) + '">Abrir no Scryfall</a>' : '')
     + '<button type="button" class="btn" id="dlg-close">Fechar</button></div></div></div>';
@@ -686,7 +687,7 @@ function openCard(key) {
 /* ============ leitura de estratégia (IA) ============ */
 /* Endereço do serviço que guarda a chave do dono do site. Vazio = modo "código de acesso" desligado. */
 const PROXY_URL = '';
-const ai = { rejected: [], altBusy: null, replNote: '', effort: 'medium', status: '', lastCost: null, code: '', raw: '', budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
+const ai = { prev: null, rejected: [], altBusy: null, replNote: '', effort: 'medium', status: '', lastCost: null, code: '', raw: '', budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
 const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (mais barato)'], ['claude-opus-5-5', 'Claude Opus 5.5 (mais detalhado)']];
 const BUDGETS = { eco: ['Econômico', 'Orçamento econômico: prefira cartas baratas, até cerca de R$ 30 cada.'], mod: ['Moderado', 'Orçamento moderado: evite cartas acima de cerca de R$ 150 cada.'], livre: ['Sem limite', 'Sem limite de orçamento.'] };
 const COMBOS = { nao: ['Evitar', 'Não sugira combos infinitos nem linhas degeneradas.'], sim: ['Aceito', 'O jogador aceita combos infinitos se forem coerentes com o plano.'] };
@@ -704,9 +705,25 @@ const SYSTEM = [
   '- Diferencie cantrip, vantagem de cartas e engine recorrente. Mana condicional não equivale a mana universal. Buscar terreno para a mão não é ramp.',
   '- Em proteção, diga contra o que ela não protege quando isso importar.',
   '- Respeite a curva: ao sugerir uma carta cara, corte outra carta cara. Informe o efeito de cada troca na curva e nas funções.',
-  '- Prefira refinar a reconstruir. Não force cortes; se o deck já está refinado, diga isso. No máximo 8 trocas, priorizando impacto claro. Evite upgrades marginais.',
+  '- Prefira refinar a reconstruir. Não force cortes; se o deck já está refinado, diga isso. No máximo 10 trocas, priorizando impacto claro. Evite upgrades marginais.',
   '- Inclua opções menos óbvias quando elas realmente melhorarem o deck, nunca só por serem obscuras.',
   '- Seja direto e sincero. Discorde quando houver razão técnica. Quando duas opções forem próximas, diga.',
+  '',
+  'Revisão carta a carta (obrigatória):',
+  '- Antes de escrever a leitura, avalie cada carta que não é terreno, uma por uma, sem pular nenhuma, lendo o texto Oracle fornecido. Só depois tire as conclusões gerais. A leitura, os pontos fracos e as trocas têm de ser consequência dessa revisão.',
+  '- Procure ativamente cartas que não funcionam neste deck como o jogador provavelmente espera: interação que o texto Oracle não sustenta, condição que o deck raramente satisfaz, anti-sinergia com o comandante ou com o plano, payoff sem peças suficientes para ativá-lo. Registre todas, não só as mais graves.',
+  '- Toda carta marcada como problema precisa aparecer também em uma troca, na lista de observação ou nas escolhas pessoais.',
+  '',
+  'Continuidade entre leituras:',
+  '- Se houver uma leitura anterior deste deck, parta dela. Mantenha as conclusões que continuam valendo, inclusive as cartas que você já tinha marcado, mesmo que não sejam o foco agora. Só mude de opinião com motivo, e diga qual na nota da carta.',
+  '',
+  'Coerência entre diagnóstico e trocas (confira antes de responder):',
+  '- As trocas existem para resolver os problemas que você apontou. Cada ponto fraco crítico e cada alerta crítico do site precisa de trocas que o resolvam, na quantidade necessária. Se o problema é numérico, a soma das trocas tem de fechar a conta.',
+  '- Exemplo: se o deck tem 32 terrenos e você recomenda 34, duas trocas precisam tirar cartas que não são terreno e pôr terrenos. Trocar um terreno por outro não muda o total e não resolve.',
+  '- O mesmo vale para ramp, compra, remoção e curva: se você diz que falta, as trocas precisam acrescentar; se diz que sobra, precisam cortar.',
+  '- Não deixe a leitura contradizer as trocas, nem o veredito contradizer os pontos fracos. Se um problema crítico não puder ser resolvido dentro das restrições do jogador, diga isso explicitamente no veredito.',
+  '- O campo de efeito de cada troca descreve o resultado real nos números (por exemplo: Terrenos +1 · Curva -3).',
+  '- Ao sugerir um terreno, confirme o que ele gera e se entra virado. Não cite uma carta como boa opção e a descarte na mesma resposta. Escreva só a conclusão, sem se corrigir no meio do texto.',
   '',
   'Regras de verificação:',
   '- Para as cartas do deck, use somente o texto Oracle fornecido. Não presuma interações que o texto não sustenta. Atenção a "enters" contra "whenever", "once each turn", "your end step" contra "each end step", efeito de substituição contra habilidade desencadeada.',
@@ -727,13 +744,14 @@ const FORMAT = [
   ' "fracos": [{"nivel": "critico | moderado | opcional", "titulo": "...", "texto": "..."}],',
   ' "sinergias": [{"cartas": ["Carta A", "Carta B"], "texto": "5 a 10 interações internas, priorizando as menos óbvias"}],',
   ' "top": [{"carta": "...", "motivo": "as 10 cartas mais importantes para esta lista, uma linha cada"}],',
+  ' "cartas": [{"carta": "nome", "papel": "core | suporte | utilidade | flex", "avaliacao": "ok | atencao | problema", "nota": "vazia se ok; senão, o que não funciona neste deck e por quê"}],',
   ' "trocas": [{"sai": "carta do deck", "entra": "carta nova", "prioridade": "alta | media | baixa", "tipo": "Auto-include | Upgrade forte | Tech interessante | Experimental", "motivo": "o que se perde, o que se ganha e por que vale neste deck", "efeito": "ex.: Curva -3 · Compra +1"}],',
   ' "watchlist": [{"carta": "...", "motivo": "boa carta que pode ser trocada"}],',
   ' "pessoais": [{"carta": "...", "motivo": "não ideal, mas justificável"}],',
   ' "bracket": {"estimado": 3, "motivo": "2 a 4 linhas: poder real contra classificação oficial"},',
   ' "veredito": {"forte": "...", "coerente": "...", "gargalo": "...", "primeira": "a primeira mudança que você faria", "quantas": "quantas mudanças são realmente necessárias"}',
   '}',
-  'As notas vão de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).'
+  'O campo cartas tem uma entrada para CADA carta que não é terreno, sem pular nenhuma. As notas vão de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).'
 ].join('\n');
 
 function deckContext() {
@@ -777,7 +795,7 @@ const LIST = (props, req) => ({ type: 'array', items: { type: 'object', properti
 const TOOL = {
   name: 'registrar_leitura',
   description: 'Registra a leitura de estratégia do deck. Textos em português do Brasil; nomes de cartas em inglês, exatos. Seja conciso: uma a três frases por campo de texto.',
-  input_schema: { type: 'object', required: ['leitura', 'planos', 'notas', 'fortes', 'fracos', 'sinergias', 'top', 'trocas', 'bracket', 'veredito'], properties: {
+  input_schema: { type: 'object', required: ['leitura', 'planos', 'cartas', 'notas', 'fortes', 'fracos', 'sinergias', 'top', 'trocas', 'bracket', 'veredito'], properties: {
     leitura: S('Uma ou duas frases começando por: Estou lendo este deck como...'),
     pergunta: S('Uma pergunta ao jogador, só se houver ambiguidade real de direção que mudaria as recomendações. Senão, string vazia.'),
     planos: { type: 'object', properties: { a: S('Plano A'), b: S('Plano B'), c: S('Plano C') }, required: ['a', 'b', 'c'] },
@@ -786,6 +804,7 @@ const TOOL = {
     fracos: LIST({ nivel: { type: 'string', enum: ['critico', 'moderado', 'opcional'] }, titulo: S('Título curto'), texto: S('Explicação') }, ['nivel', 'titulo', 'texto']),
     sinergias: LIST({ cartas: { type: 'array', items: { type: 'string' } }, texto: S('A interação') }, ['cartas', 'texto']),
     top: LIST({ carta: S('Nome da carta'), motivo: S('Uma linha') }, ['carta', 'motivo']),
+    cartas: LIST({ carta: S('Nome exato da carta do deck'), papel: { type: 'string', enum: ['core', 'suporte', 'utilidade', 'flex'] }, avaliacao: { type: 'string', enum: ['ok', 'atencao', 'problema'] }, nota: S('Vazia quando a avaliação for ok. Em atencao ou problema: uma ou duas frases dizendo o que não funciona neste deck e por quê.') }, ['carta', 'papel', 'avaliacao', 'nota']),
     trocas: LIST({ sai: S('Carta do deck que sai'), entra: S('Carta nova que entra'), prioridade: { type: 'string', enum: ['alta', 'media', 'baixa'] }, tipo: { type: 'string', enum: ['Auto-include', 'Upgrade forte', 'Tech interessante', 'Experimental'] }, motivo: S('O que se perde, o que se ganha e por que vale neste deck'), efeito: S('Ex.: Curva -3 · Compra +1') }, ['sai', 'entra', 'prioridade', 'tipo', 'motivo']),
     watchlist: LIST({ carta: S('Nome'), motivo: S('Boa carta que pode ser trocada') }, ['carta', 'motivo']),
     pessoais: LIST({ carta: S('Nome'), motivo: S('Não ideal, mas justificável') }, ['carta', 'motivo']),
@@ -794,8 +813,18 @@ const TOOL = {
   } }
 };
 (function strict(n) { if (!n || typeof n !== 'object') return; if (n.type === 'object') { n.additionalProperties = false; Object.keys(n.properties || {}).forEach((k) => strict(n.properties[k])); } if (n.type === 'array') strict(n.items); })(TOOL.input_schema);
-const TOOLNOTE = 'Responda com a leitura no formato JSON pedido. Textos em português do Brasil, concisos (uma a três frases por campo); nomes de cartas em inglês, exatos. Se não houver pergunta ao jogador, deixe o campo pergunta vazio. Sinergias: 5 a 10, priorizando as menos óbvias. Top: as 10 cartas mais importantes para esta lista. Trocas: no máximo 8. Notas de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).';
-const analysisPrompt = () => deckContext() + '\n\n' + FORMAT;
+const TOOLNOTE = 'Responda com a leitura no formato JSON pedido. O campo cartas tem uma entrada para CADA carta que não é terreno, sem pular nenhuma. Textos em português do Brasil, concisos (uma a três frases por campo); nomes de cartas em inglês, exatos. Se não houver pergunta ao jogador, deixe o campo pergunta vazio. Sinergias: 5 a 10, priorizando as menos óbvias. Top: as 10 cartas mais importantes para esta lista. Trocas: no máximo 10. Notas de 0 a 10: sinergia (quanto as cartas trabalham juntas e com o comandante), consistencia (com que frequência o deck executa o plano, com e sem o comandante), fechar (capacidade de converter vantagem em vitória).';
+function prevBlock() {
+  const P = ai.data || ai.prev; if (!P) return '';
+  const flagged = (P.cartas || []).filter((c) => c && c.avaliacao && c.avaliacao !== 'ok');
+  const L = ['', '', 'LEITURA ANTERIOR DESTE DECK (feita por você):', '- Leitura: ' + (P.leitura || '')];
+  if ((P.fracos || []).length) L.push('- Pontos fracos apontados: ' + P.fracos.map((f) => (f.titulo || '') + ' ' + (f.texto || '')).join(' | '));
+  if (flagged.length) L.push('- Cartas marcadas: ' + flagged.map((c) => c.carta + ' (' + c.avaliacao + '): ' + (c.nota || '')).join(' | '));
+  if ((P.trocas || []).length) L.push('- Trocas que você sugeriu: ' + P.trocas.map((t) => t.sai + ' -> ' + t.entra).join('; '));
+  if ((P.watchlist || []).length) L.push('- Lista de observação: ' + P.watchlist.map((w) => w.carta).join(', '));
+  return L.join('\n');
+}
+const analysisPrompt = () => deckContext() + prevBlock() + '\n\n' + FORMAT;
 
 function parseAI(text) {
   let t = String(text || '').replace(/```(?:json)?/gi, '');
@@ -808,7 +837,7 @@ function parseAI(text) {
 }
 function normalizeAI(j) {
   if (!j || typeof j !== 'object' || (!j.leitura && !Array.isArray(j.trocas))) throw new Error('formato');
-  ['notas', 'fortes', 'fracos', 'sinergias', 'top', 'trocas', 'watchlist', 'pessoais'].forEach((k) => { if (!Array.isArray(j[k])) j[k] = []; });
+  ['cartas', 'notas', 'fortes', 'fracos', 'sinergias', 'top', 'trocas', 'watchlist', 'pessoais'].forEach((k) => { if (!Array.isArray(j[k])) j[k] = []; });
   j.planos = j.planos || {}; j.veredito = j.veredito || {}; j.bracket = j.bracket || {};
   return j;
 }
@@ -958,7 +987,7 @@ async function runAnalysis(text) {
       if (ai.mode === 'key' && !ai.key.trim()) { ai.error = 'Cole sua chave da Anthropic no campo acima.'; return; }
       ai.busy = true; rerender();
       setStatus('Enviando o deck…');
-      const r = await callClaude(SYSTEM, [{ role: 'user', content: deckContext() + '\n\n' + TOOLNOTE }], EFFORTS[ai.effort][1], TOOL.input_schema, ai.effort, (o) => setStatus(o.text ? 'Escrevendo a leitura… ' + o.text.length + ' caracteres' : 'Pensando no deck…'));
+      const r = await callClaude(SYSTEM, [{ role: 'user', content: deckContext() + prevBlock() + '\n\n' + TOOLNOTE }], EFFORTS[ai.effort][1], TOOL.input_schema, ai.effort, (o) => setStatus(o.text ? 'Escrevendo a leitura… ' + o.text.length + ' caracteres' : 'Pensando no deck…'));
       setStatus('');
       ai.raw = 'stop_reason: ' + r.stop + '\n' + (r.text || '(resposta vazia)');
       if (r.stop === 'max_tokens') { ai.error = 'A resposta foi cortada antes do fim, porque o modelo usou todo o limite. Esta tentativa foi cobrada. Escolha uma profundidade menor antes de tentar de novo.'; return; }
@@ -975,23 +1004,49 @@ async function runAnalysis(text) {
   finally { ai.busy = false; rerender(); if (ai.data && !ai.error) { const el = $('#leitura'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }
 }
 
+const CHAT_SCHEMA = { type: 'object', additionalProperties: false, required: ['resposta', 'atualizar_trocas', 'trocas'], properties: {
+  resposta: { type: 'string', description: 'Sua resposta ao jogador, em português, texto corrido, até 200 palavras, sem se contradizer.' },
+  atualizar_trocas: { type: 'boolean', description: 'true se a conversa muda as recomendações de troca; false se é só uma explicação.' },
+  trocas: TOOL.input_schema.properties.trocas } };
+const fromAI = (t) => ({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), out: String(t.sai), in: String(t.entra), inKey: norm(t.entra), status: 'pending', prio: String(t.prioridade || ''), tipo: String(t.tipo || ''), motivo: String(t.motivo || ''), efeito: String(t.efeito || ''), issue: null });
+
 async function sendChat() {
-  const msg = ai.chatDraft.trim(); if (!msg) return;
+  const msg = ai.chatDraft.trim(); if (!msg || ai.chatBusy) return;
   ai.notes.push(msg); ai.chatDraft = ''; ai.stale = !!ai.data;
   if (!((ai.mode === 'key' && ai.key.trim()) || (ai.mode === 'code' && ai.code.trim()))) { rerender(); return; }
   ai.chat.push({ role: 'user', text: msg }); ai.chatBusy = true; rerender();
   try {
-    const sys = SYSTEM + '\n\nVocê está conversando com o jogador sobre este deck. Responda em português, em texto corrido e curto (até 150 palavras), sem JSON e sem listas longas. Se citar cartas, use o nome exato em inglês.\n\n' + deckContext() + (ai.data ? '\n\nSUA LEITURA ANTERIOR (JSON):\n' + JSON.stringify(ai.data) : '');
-    const reply = await callClaude(sys, ai.chat.map((m) => ({ role: m.role, content: m.text })), 6000, null, 'low');
-    ai.chat.push({ role: 'assistant', text: reply.text || 'A resposta veio vazia. Tente perguntar de novo.' });
-  } catch (e) { ai.chat.push({ role: 'assistant', text: e.message, err: true }); }
+    const list = (st) => { const x = ai.swaps.filter((w) => w.status === st); return x.length ? x.map((w) => 'sai ' + w.out + ', entra ' + w.in).join('; ') : 'nenhuma'; };
+    const sys = SYSTEM + '\n\nVocê está conversando com o jogador sobre este deck, depois de já ter feito a leitura. Responda no campo resposta. Se citar cartas, use o nome exato em inglês.'
+      + '\nQuando a conversa mudar as recomendações (o jogador discordou, pediu outra direção, ou você reconheceu um erro seu), marque atualizar_trocas como true e devolva em trocas a lista completa e corrigida das trocas pendentes, aplicando as regras de coerência: a soma das trocas tem de resolver o problema discutido. As trocas já aceitas pelo jogador não entram nessa lista e não devem ser desfeitas. As cartas travadas pelo jogador não podem sair. Quando for só uma explicação, marque false e devolva trocas vazia.'
+      + '\n\n' + deckContext() + (ai.data ? '\n\nSUA LEITURA ANTERIOR (JSON):\n' + JSON.stringify(ai.data) : '')
+      + '\n\nTROCAS NO PAINEL AGORA:\n- Aceitas pelo jogador (já aplicadas nos números acima): ' + list('accepted') + '\n- Pendentes: ' + list('pending') + '\n- Recusadas com a carta travada: ' + list('kept');
+    const eff = ai.effort === 'low' ? 'medium' : ai.effort;
+    const r = await callClaude(sys, ai.chat.filter((m) => !m.err).map((m) => ({ role: m.role, content: m.text })), EFFORTS[eff][1], CHAT_SCHEMA, eff);
+    if (r.stop === 'max_tokens') throw new Error('A resposta foi cortada antes do fim. Esta tentativa foi cobrada.');
+    let j; try { const t = r.text; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (e) { throw new Error('A resposta não veio no formato esperado. Tente perguntar de novo.'); }
+    let text = String(j.resposta || '').trim() || 'A resposta veio vazia. Tente perguntar de novo.';
+    if (j.atualizar_trocas === true && ai.data) {
+      const fresh = (Array.isArray(j.trocas) ? j.trocas : []).filter((t) => t && t.sai && t.entra).slice(0, 12).map(fromAI);
+      const keep = ai.swaps.filter((w) => w.status === 'accepted');
+      ai.swaps = keep.concat(fresh);
+      await validateSwaps(fresh);
+      ai.swaps = ai.swaps.filter((w) => !w.issue);
+      const n = ai.swaps.length - keep.length;
+      rebuildDeck();
+      text += '\n\n' + (n ? 'Atualizei o painel de trocas: ' + plural(n, 'troca pendente', 'trocas pendentes') + (keep.length ? (keep.length === 1 ? ', além da que você já aceitou' : ', além das ' + keep.length + ' que você já aceitou') : '') + '.' : 'Tentei atualizar o painel de trocas, mas nenhuma das novas sugestões passou na conferência do site.');
+      ai.stale = false;
+    }
+    ai.chat.push({ role: 'assistant', text: text });
+  } catch (e) { ai.chat.push({ role: 'assistant', text: e.message || 'Algo deu errado. Tente de novo.', err: true }); }
   finally { ai.chatBusy = false; rerender(); }
 }
-
 function saveAI() { const s = store.get(); s.ai = { budget: ai.budget, combos: ai.combos, mode: ai.mode, model: ai.model, effort: ai.effort, remember: ai.remember, key: ai.remember ? ai.key : '', code: ai.remember ? ai.code : '' }; store.set(s); }
 function loadAI() { const s = (store.get().ai) || {}; ['budget', 'combos', 'mode', 'model', 'effort', 'key', 'code'].forEach((k) => { if (typeof s[k] === 'string' && s[k]) ai[k] = s[k]; }); if (typeof s.remember === 'boolean') ai.remember = s.remember; if (PROXY_URL && !s.mode) ai.mode = 'code'; if (!PROXY_URL && ai.mode === 'code') ai.mode = 'paste'; if (!EFFORTS[ai.effort]) ai.effort = 'medium'; if (!BUDGETS[ai.budget]) ai.budget = 'mod'; if (!COMBOS[ai.combos]) ai.combos = 'nao'; if (!MODELS.some((m) => m[0] === ai.model)) ai.model = MODELS[0][0]; }
 function rerender() { const y = window.scrollY; renderDiag(); window.scrollTo(0, y); }
 
+const reviewOf = (name) => { if (!ai.data || !ai.data.cartas) return null; const k = norm(name); const k2 = norm(String(name).split(' // ')[0]); return ai.data.cartas.find((c) => c && c.carta && (norm(c.carta) === k || norm(c.carta) === k2)) || null; };
+const reviewTag = (name) => { const r = reviewOf(name); return r && r.avaliacao === 'problema' ? '<span class="tag" style="color:var(--crit);border-color:var(--crit)">Problema</span>' : r && r.avaliacao === 'atencao' ? '<span class="tag gc">Atenção</span>' : ''; };
 function aiScores() {
   if (!ai.data) return [];
   const names = { sinergia: 'Sinergia', consistencia: 'Consistência', fechar: 'Fechar partidas' };
@@ -1005,7 +1060,7 @@ const cardLink = (name) => { const d = findDeck(name); return d ? '<button type=
 
 function renderAISetup() {
   const locks = state.deck.filter((d) => ai.locks.has(d.key));
-  let h = '<section class="panel" id="ai"><div class="phead"><h2 style="font-size:24px">' + (ai.data ? 'Refazer a leitura' : 'Leitura de estratégia') + '</h2><span class="small muted">feita por IA, com os números do site e o texto de cada carta · versão 09/10 12:40</span></div><div class="row">';
+  let h = '<section class="panel" id="ai"><div class="phead"><h2 style="font-size:24px">' + (ai.data ? 'Refazer a leitura' : 'Leitura de estratégia') + '</h2><span class="small muted">feita por IA, com os números do site e o texto de cada carta · versão 09/10 14:30</span></div><div class="row">';
   h += '<div style="flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:16px">'
     + '<div class="fld"><span class="lab">Orçamento para trocas</span><div class="pillrow">' + pillsFor('budget', BUDGETS) + '</div></div>'
     + '<div class="fld"><span class="lab">Combos infinitos</span><div class="pillrow">' + pillsFor('combos', COMBOS) + '</div></div>'
@@ -1052,7 +1107,12 @@ function renderLeitura() {
 
 function renderInsights() {
   const D = ai.data; const lv = { critico: ['Crítico', 'var(--crit)'], moderado: ['Moderado', 'var(--warn)'], opcional: ['Opcional', 'var(--info)'] };
-  let h = '<section class="row"><div class="panel grow1"><h2>Pontos fortes</h2><ul class="plain">' + D.fortes.map((f) => '<li>' + esc(f) + '</li>').join('') + '</ul></div>'
+  const rv = (D.cartas || []).filter((c) => c && c.carta); const flagged = rv.filter((c) => c.avaliacao === 'problema').concat(rv.filter((c) => c.avaliacao === 'atencao'));
+  let h = '';
+  if (rv.length) h += '<section class="panel"><div class="phead"><h2 style="font-size:24px">Cartas que merecem atenção</h2><span class="small muted">' + rv.length + ' cartas revisadas uma a uma</span></div>'
+    + (flagged.length ? '<ul class="plain">' + flagged.map((c) => '<li><span class="mono small" style="letter-spacing:.06em;text-transform:uppercase;color:' + (c.avaliacao === 'problema' ? 'var(--crit)' : 'var(--warn)') + '">' + (c.avaliacao === 'problema' ? 'Problema' : 'Atenção') + '</span> · <strong>' + cardLink(c.carta) + '</strong><br>' + esc(c.nota || '') + '</li>').join('') + '</ul>'
+      : '<p class="soft" style="font-size:15px">Nenhuma carta foi marcada. Todas cumprem o papel esperado neste deck.</p>') + '</section>';
+  h += '<section class="row"><div class="panel grow1"><h2>Pontos fortes</h2><ul class="plain">' + D.fortes.map((f) => '<li>' + esc(f) + '</li>').join('') + '</ul></div>'
     + '<div class="panel grow1"><h2>Pontos fracos</h2><ul class="plain">' + D.fracos.map((f) => { const l = lv[norm(f.nivel || '')] || lv.moderado; return '<li><span class="mono small" style="color:' + l[1] + ';letter-spacing:.06em;text-transform:uppercase">' + l[0] + '</span><br><strong>' + esc(f.titulo || '') + '</strong> ' + esc(f.texto || '') + '</li>'; }).join('') + '</ul></div></section>';
   h += '<section class="row"><div class="panel grow3"><h2>Sinergias mais importantes</h2><ul class="plain">' + D.sinergias.map((s) => '<li><strong>' + (s.cartas || []).map(cardLink).join(' + ') + '</strong><br>' + esc(s.texto || '') + '</li>').join('') + '</ul></div>'
     + '<div class="panel grow2"><h2>Top 10 cartas desta lista</h2><ol class="plain num">' + D.top.slice(0, 10).map((t) => '<li><strong>' + cardLink(t.carta || '') + '</strong><br><span class="muted">' + esc(t.motivo || '') + '</span></li>').join('') + '</ol></div></section>';
@@ -1120,7 +1180,7 @@ function renderChat() {
   if (ai.chatBusy) h += '<div class="bubble them muted">Pensando…</div>';
   h += '<div style="display:flex;gap:8px;flex-wrap:wrap"><label for="chatmsg" class="sr">Sua mensagem</label><input type="text" id="chatmsg" placeholder="' + (key ? 'Pergunte ou explique o que você quer do deck' : 'Responda ou diga o que você quer do deck') + '" value="' + esc(ai.chatDraft) + '" style="flex:1 1 240px;min-width:0;min-height:44px;padding:0 14px">'
     + '<button type="button" class="btn" id="btn-chat"' + (ai.chatBusy ? ' disabled' : '') + '>' + (key ? 'Enviar' : 'Registrar') + '</button></div>'
-    + '<p class="small muted">' + (key ? 'Tudo o que você disser aqui também entra como preferência na próxima leitura.' : 'No modo copiar e colar, a conversa acontece no seu chat. O que você registrar aqui entra no próximo pedido que copiar.') + '</p></section>';
+    + '<p class="small muted">' + (key ? 'A conversa pode atualizar as trocas do painel. O que você disser também entra como preferência na próxima leitura.' : 'No modo copiar e colar, a conversa acontece no seu chat. O que você registrar aqui entra no próximo pedido que copiar.') + '</p></section>';
   return h;
 }
 
@@ -1164,6 +1224,7 @@ function openSnap(snap) {
     swaps: data ? (Array.isArray(S.swaps) ? S.swaps : []).slice(0, 12).map((w, i) => ({ id: 's' + i, out: str(w.out), in: str(w.in), inKey: norm(str(w.inKey) || str(w.in)), outKey: w.outKey ? norm(str(w.outKey)) : undefined, status: ['pending', 'accepted', 'kept'].indexOf(w.status) >= 0 ? w.status : 'pending', prio: str(w.prio), tipo: str(w.tipo), motivo: str(w.motivo), efeito: str(w.efeito), issue: w.issue ? str(w.issue) : null })) : [],
     committed: (Array.isArray(S.committed) ? S.committed : []).map((c) => ({ out: str(c.out), in: str(c.in), inKey: norm(str(c.inKey) || str(c.in)) })),
     pool: new Map((Array.isArray(S.pool) ? S.pool : []).filter(Array.isArray).map((e) => { const c = slim(e[1] && e[1].card); return [norm(str(e[0])), { card: c, gc: !!(e[1] && e[1].gc), tags: tagsOf(c) }]; })),
+    prev: null,
     rejected: (Array.isArray(S.rejected) ? S.rejected : []).map(str).filter(Boolean).slice(0, 60), altBusy: null,
     notes: (Array.isArray(S.notes) ? S.notes : []).map(str).filter(Boolean), locks: new Set((Array.isArray(S.locks) ? S.locks : []).map(str)), wish: str(S.wish),
     chat: (Array.isArray(S.chat) ? S.chat : []).filter((m) => m && (m.role === 'user' || m.role === 'assistant')).map((m) => ({ role: m.role, text: str(m.text) })),
@@ -1217,8 +1278,9 @@ async function run() {
       return { key: e.key, qty: e.qty, card: c, cmd: parsed.commanders.indexOf(e.key) >= 0, tags: tagsOf(c), gc: c.game_changer === true || !!(gcNames && gcNames.has(norm(c.name))) };
     });
     state.snapId = Date.now().toString(36); state.snapCreated = Date.now(); state.text = text;
+    const older = hist.list().find((x) => x.ai && x.ai.data && norm(x.text || '') === norm(text)); let prevData = null; if (older) { try { prevData = normalizeAI(older.ai.data); } catch (e) { prevData = null; } }
     state.unresolved = r.unresolved; state.fixed = r.fixed; state.filter = null; state.sel = null; state.gcNames = gcNames;
-    Object.assign(ai, { rejected: [], altBusy: null, data: null, swaps: [], committed: [], pool: new Map(), chat: [], notes: [], locks: new Set(), stale: false, error: '', paste: '', chatDraft: '', busy: false });
+    Object.assign(ai, { prev: prevData, rejected: [], altBusy: null, data: null, swaps: [], committed: [], pool: new Map(), chat: [], notes: [], locks: new Set(), stale: false, error: '', paste: '', chatDraft: '', busy: false });
     if (!state.deck.length) throw new Error('Nenhuma carta da lista foi reconhecida.');
     if (!state.deck.some((d) => d.cmd)) state.deck[0].cmd = true;
     state.base = state.deck.map((d) => Object.assign({}, d));
