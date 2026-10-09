@@ -234,7 +234,7 @@ footer{font-size:13px;color:var(--muted)}
 <!-- DIAGNÓSTICO -->
 <main id="view-diag" hidden style="display:flex;flex-direction:column;gap:28px"></main>
 
-<footer>Dados e imagens das cartas: Scryfall. Magic: The Gathering pertence à Wizards of the Coast. Site de fãs, sem vínculo com a Wizards.</footer>
+<footer>Dados e imagens das cartas: Scryfall. Magic: The Gathering pertence à Wizards of the Coast. Site de fãs, sem vínculo com a Wizards. <span id="versao">Versão 09/10 12:40</span></footer>
 </div>
 
 <dialog id="dlg" aria-labelledby="dlg-name"></dialog>
@@ -686,7 +686,7 @@ function openCard(key) {
 /* ============ leitura de estratégia (IA) ============ */
 /* Endereço do serviço que guarda a chave do dono do site. Vazio = modo "código de acesso" desligado. */
 const PROXY_URL = '';
-const ai = { effort: 'medium', status: '', lastCost: null, code: '', raw: '', budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
+const ai = { rejected: [], altBusy: null, replNote: '', effort: 'medium', status: '', lastCost: null, code: '', raw: '', budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
 const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (mais barato)'], ['claude-opus-5-5', 'Claude Opus 5.5 (mais detalhado)']];
 const BUDGETS = { eco: ['Econômico', 'Orçamento econômico: prefira cartas baratas, até cerca de R$ 30 cada.'], mod: ['Moderado', 'Orçamento moderado: evite cartas acima de cerca de R$ 150 cada.'], livre: ['Sem limite', 'Sem limite de orçamento.'] };
 const COMBOS = { nao: ['Evitar', 'Não sugira combos infinitos nem linhas degeneradas.'], sim: ['Aceito', 'O jogador aceita combos infinitos se forem coerentes com o plano.'] };
@@ -710,7 +710,7 @@ const SYSTEM = [
   '',
   'Regras de verificação:',
   '- Para as cartas do deck, use somente o texto Oracle fornecido. Não presuma interações que o texto não sustenta. Atenção a "enters" contra "whenever", "once each turn", "your end step" contra "each end step", efeito de substituição contra habilidade desencadeada.',
-  '- Só sugira cartas reais cujo texto Oracle atual você conhece com segurança, legais em Commander e dentro da identidade de cor do comandante. Use o nome exato em inglês. O site confere cada sugestão no Scryfall.',
+  '- Só sugira cartas reais cujo texto Oracle atual você conhece com segurança, legais em Commander e dentro da identidade de cor do comandante. Antes de registrar cada troca, confira a identidade de cor da carta nova, incluindo símbolos de mana no texto de regras, contra as cores proibidas informadas. Use o nome exato em inglês. O site confere cada sugestão no Scryfall e descarta as ilegais.',
   '- Os números e a classificação de funções foram calculados pelo site. A classificação é automática e pode errar: corrija-a no seu raciocínio se o texto da carta mostrar outra coisa, mas não recalcule os totais.',
   '- Nunca sugira remover uma carta marcada como intocável. Trate-a como restrição e considere cartas que a tornem melhor.',
   '- Brackets: use as definições atuais da Wizards (1 Exhibition, 2 Core, 3 Upgraded, 4 Optimized, 5 cEDH). Os Game Changers do deck foram identificados pelo site.'
@@ -739,7 +739,10 @@ const FORMAT = [
 function deckContext() {
   const A = state.A; const L = [];
   L.push('COMANDANTE: ' + A.cmds.map((d) => d.card.name).join(' + '));
-  L.push('IDENTIDADE DE COR: ' + (A.identity.join('') || 'incolor'));
+  const CN = { W: 'branco (W)', U: 'azul (U)', B: 'preto (B)', R: 'vermelho (R)', G: 'verde (G)' };
+  const okC = Object.keys(CN).filter((c) => A.identity.indexOf(c) >= 0); const noC = Object.keys(CN).filter((c) => A.identity.indexOf(c) < 0);
+  L.push('IDENTIDADE DE COR: ' + (okC.length ? okC.map((c) => CN[c]).join(', ') : 'incolor') + '.');
+  if (noC.length) L.push('CORES PROIBIDAS: ' + noC.map((c) => CN[c]).join(', ') + '. Qualquer carta com símbolo de mana dessas cores no custo ou no texto de regras é ilegal neste deck e não pode ser sugerida, por melhor que seja a sinergia.');
   L.push('BRACKET ALVO DO JOGADOR: ' + state.target + ' (' + BRACKETS[state.target] + ')');
   L.push('');
   L.push('NÚMEROS CALCULADOS PELO SITE:');
@@ -757,6 +760,7 @@ function deckContext() {
   const locks = state.deck.filter((d) => ai.locks.has(d.key)).map((d) => d.card.name);
   L.push('- Cartas intocáveis: ' + (locks.length ? locks.join(', ') : 'nenhuma declarada') + '.');
   if (ai.committed.length) L.push('- Trocas já feitas nesta sessão (não volte atrás): ' + ai.committed.map((c) => c.out + ' -> ' + c.in).join('; ') + '.');
+  if (ai.rejected.length) L.push('- Cartas que o jogador já recusou como sugestão (não sugira de novo): ' + ai.rejected.join(', ') + '.');
   if (ai.wish.trim()) L.push('- O que o jogador quer do deck: ' + ai.wish.trim());
   ai.notes.forEach((n) => L.push('- O jogador disse: ' + n));
   L.push('');
@@ -811,7 +815,7 @@ function normalizeAI(j) {
 
 const EFFORTS = { low: ['Rápida (mais barata)', 16000], medium: ['Equilibrada', 32000], high: ['Profunda (mais cara)', 48000] };
 const PRICES = { 'claude-sonnet-5-5': [2, 10], 'claude-opus-5-5': [4, 20] };   // US$ por milhão de tokens: entrada, saída
-function setStatus(t) { ai.status = t; const el = $('#ai-status'); if (el) el.textContent = t; }
+function setStatus(t) { ai.status = t; document.querySelectorAll('[data-status]').forEach((el) => { el.textContent = t; }); }
 
 async function callClaude(system, messages, maxTokens, schema, effort, onProgress) {
   let res;
@@ -868,10 +872,16 @@ async function applyAI(data) {
   // trocas anteriores aceitas viram parte do deck
   ai.swaps.filter((s) => s.status === 'accepted').forEach((s) => ai.committed.push({ out: s.out, in: s.in, inKey: s.inKey }));
   state.base = state.deck.map((d) => Object.assign({}, d));
-  ai.data = data; ai.stale = false; ai.chat = [];
+  ai.data = data; ai.stale = false; ai.chat = []; ai.replNote = '';
   ai.swaps = data.trocas.filter((t) => t && t.sai && t.entra).slice(0, 12).map((t, i) => ({ id: 's' + i, out: String(t.sai), in: String(t.entra), inKey: norm(t.entra), status: 'pending', prio: String(t.prioridade || ''), tipo: String(t.tipo || ''), motivo: String(t.motivo || ''), efeito: String(t.efeito || ''), issue: null }));
+  await validateSwaps(ai.swaps);
+  ai.swaps = ai.swaps.filter((s) => !s.issue);
+  rebuildDeck();
+}
+
+async function validateSwaps(list) {
   const need = []; const seen = new Set();
-  ai.swaps.forEach((s) => { if (!ai.pool.has(s.inKey) && !seen.has(s.inKey)) { seen.add(s.inKey); need.push({ key: s.inKey, name: s.in, qty: 1 }); } });
+  list.forEach((s) => { if (!ai.pool.has(s.inKey) && !seen.has(s.inKey)) { seen.add(s.inKey); need.push({ key: s.inKey, name: s.in, qty: 1 }); } });
   let lookupFailed = false;
   if (need.length) {
     try {
@@ -880,7 +890,8 @@ async function applyAI(data) {
     } catch (e) { lookupFailed = true; }
   }
   const idSet = new Set(state.A.identity);
-  ai.swaps.forEach((s) => {
+  const taken = new Set(ai.swaps.filter((o) => list.indexOf(o) < 0 && !o.issue).map((o) => o.inKey));
+  list.forEach((s) => {
     const out = findDeck(s.out); const p = ai.pool.get(s.inKey);
     if (out) { s.outKey = out.key; s.out = out.card.name; }
     if (!out) s.issue = 'A carta que sai não está na sua lista.';
@@ -891,11 +902,41 @@ async function applyAI(data) {
       s.in = p.card.name;
       const dup = findDeck(p.card.name);
       if (dup && copyLimit(p.card) === 1) s.issue = 'A carta nova já está no deck.';
+      else if (taken.has(s.inKey)) s.issue = 'A carta nova já aparece em outra troca.';
       else if ((p.card.color_identity || []).some((x) => !idSet.has(x))) s.issue = 'A carta nova está fora da identidade de cor do comandante.';
       else if (p.card.legalities && p.card.legalities.commander !== 'legal') s.issue = 'A carta nova não é legal em Commander.';
+      if (!s.issue) taken.add(s.inKey);
     }
   });
-  rebuildDeck();
+}
+
+const REPL_SCHEMA = { type: 'object', additionalProperties: false, required: ['trocas'], properties: { trocas: TOOL.input_schema.properties.trocas } };
+async function requestAlt(id) {
+  const s = ai.swaps.find((x) => x.id === id); if (!s || ai.altBusy) return;
+  const reason = (s.altDraft || '').trim();
+  ai.altBusy = id; s.altError = ''; rerender();
+  try {
+    const others = ai.swaps.filter((x) => x !== s);
+    const ask = deckContext() + '\n\nSUA LEITURA DO DECK: ' + (ai.data.leitura || '') + ' Plano A: ' + (ai.data.planos.a || '') + ' Plano B: ' + (ai.data.planos.b || '')
+      + '\n\nOUTRAS TROCAS EM ANDAMENTO (não repita as cartas que entram):\n' + (others.length ? others.map((x) => '- sai ' + x.out + ', entra ' + x.in).join('\n') : '- nenhuma')
+      + '\n\nO JOGADOR NÃO QUIS ESTA TROCA: sai ' + s.out + ', entra ' + s.in + '. Sua justificativa tinha sido: ' + s.motivo
+      + (reason ? '\nO QUE O JOGADOR DISSE: ' + reason : '\nO jogador não explicou o motivo; proponha algo diferente em função ou em abordagem.')
+      + '\n\nProponha 3 alternativas para esta troca, em ordem de preferência. Mantenha ' + s.out + ' como a carta que sai, a menos que o que o jogador disse peça outra coisa. Não repita ' + s.in + ' nem as cartas já recusadas. Confira com rigor a identidade de cor de cada carta nova contra as cores proibidas.';
+    const r = await callClaude(SYSTEM, [{ role: 'user', content: ask }], EFFORTS[ai.effort][1], REPL_SCHEMA, ai.effort, (o) => setStatus(o.text ? 'Escrevendo a nova sugestão…' : 'Pensando em outra opção…'));
+    setStatus('');
+    if (r.stop === 'max_tokens') { s.altError = 'A resposta foi cortada antes do fim. Esta tentativa foi cobrada.'; return; }
+    let j; try { const t = r.text; j = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (e) { s.altError = 'A resposta não veio no formato esperado.'; return; }
+    const fresh = (Array.isArray(j.trocas) ? j.trocas : []).filter((t) => t && t.sai && t.entra).slice(0, 4).map((t) => ({ id: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), out: String(t.sai), in: String(t.entra), inKey: norm(t.entra), status: 'pending', prio: String(t.prioridade || ''), tipo: String(t.tipo || ''), motivo: String(t.motivo || ''), efeito: String(t.efeito || ''), issue: null }));
+    await validateSwaps(fresh);
+    const pick = fresh.find((x) => !x.issue);
+    if (!pick) { s.altError = 'A IA não trouxe uma alternativa válida desta vez. Tente de novo dizendo o que você procura.'; return; }
+    if (ai.rejected.indexOf(s.in) < 0) ai.rejected.push(s.in);
+    if (reason) ai.notes.push('Sobre trocar ' + s.out + ' por ' + s.in + ': ' + reason);
+    if (s.status === 'kept') ai.locks.delete(s.outKey);
+    ai.swaps[ai.swaps.indexOf(s)] = pick;
+    rebuildDeck();
+  } catch (e) { s.altError = e.message || 'Algo deu errado. Tente de novo.'; }
+  finally { ai.altBusy = null; setStatus(''); rerender(); }
 }
 
 function rebuildDeck() {
@@ -964,7 +1005,7 @@ const cardLink = (name) => { const d = findDeck(name); return d ? '<button type=
 
 function renderAISetup() {
   const locks = state.deck.filter((d) => ai.locks.has(d.key));
-  let h = '<section class="panel" id="ai"><div class="phead"><h2 style="font-size:24px">' + (ai.data ? 'Refazer a leitura' : 'Leitura de estratégia') + '</h2><span class="small muted">feita por IA, com os números do site e o texto de cada carta</span></div><div class="row">';
+  let h = '<section class="panel" id="ai"><div class="phead"><h2 style="font-size:24px">' + (ai.data ? 'Refazer a leitura' : 'Leitura de estratégia') + '</h2><span class="small muted">feita por IA, com os números do site e o texto de cada carta · versão 09/10 12:40</span></div><div class="row">';
   h += '<div style="flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:16px">'
     + '<div class="fld"><span class="lab">Orçamento para trocas</span><div class="pillrow">' + pillsFor('budget', BUDGETS) + '</div></div>'
     + '<div class="fld"><span class="lab">Combos infinitos</span><div class="pillrow">' + pillsFor('combos', COMBOS) + '</div></div>'
@@ -985,7 +1026,7 @@ function renderAISetup() {
       + '<label class="small" style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="remember"' + (ai.remember ? ' checked' : '') + '> Lembrar o código neste navegador</label>'
       + '<p class="small muted">Quem tem o código usa a IA do dono do site, sem precisar de conta própria.</p>'
       + '<div><button type="button" class="btn primary" id="btn-ai-go"' + (ai.busy ? ' disabled' : '') + '>' + (ai.busy ? 'Analisando… pode levar alguns minutos' : ai.data ? 'Gerar nova leitura' : 'Gerar leitura') + '</button></div>'
-      + '<p class="small" id="ai-status" style="color:var(--gold);min-height:1.5em" aria-live="polite">' + esc(ai.status) + '</p>'
+      + '<p class="small" data-status="1" style="color:var(--gold);min-height:1.5em" aria-live="polite">' + esc(ai.status) + '</p>'
       + (ai.lastCost ? '<p class="small muted">Última chamada: ' + ai.lastCost.tokIn + ' tokens de entrada e ' + ai.lastCost.tokOut + ' de saída, cerca de US$ ' + fmt(ai.lastCost.usd, 2) + '.</p>' : '');
   } else {
     h += '<div class="fld"><label class="lab" for="apikey">Chave da Anthropic</label><input type="password" id="apikey" autocomplete="off" placeholder="sk-ant-..." value="' + esc(ai.key) + '" style="min-height:44px;padding:0 14px"></div>'
@@ -994,7 +1035,7 @@ function renderAISetup() {
       + '<label class="small" style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="remember"' + (ai.remember ? ' checked' : '') + '> Lembrar a chave neste navegador</label>'
       + '<p class="small muted">A chave fica só neste navegador e vai direto para a Anthropic. Cada leitura desconta dos seus créditos.</p>'
       + '<div><button type="button" class="btn primary" id="btn-ai-go"' + (ai.busy ? ' disabled' : '') + '>' + (ai.busy ? 'Analisando… pode levar alguns minutos' : ai.data ? 'Gerar nova leitura' : 'Gerar leitura') + '</button></div>'
-      + '<p class="small" id="ai-status" style="color:var(--gold);min-height:1.5em" aria-live="polite">' + esc(ai.status) + '</p>'
+      + '<p class="small" data-status="1" style="color:var(--gold);min-height:1.5em" aria-live="polite">' + esc(ai.status) + '</p>'
       + (ai.lastCost ? '<p class="small muted">Última chamada: ' + ai.lastCost.tokIn + ' tokens de entrada e ' + ai.lastCost.tokOut + ' de saída, cerca de US$ ' + fmt(ai.lastCost.usd, 2) + '.</p>' : '');
   }
   if (ai.error) h += '<div class="notice crit">' + esc(ai.error) + (ai.raw ? '<details style="margin-top:8px"><summary style="cursor:pointer">Ver o que a IA respondeu</summary><pre style="white-space:pre-wrap;word-break:break-word;font-size:12px;max-height:240px;overflow:auto;margin:8px 0 0">' + esc(ai.raw.slice(0, 3000)) + '</pre></details>' : '') + '</div>';
@@ -1028,7 +1069,8 @@ function renderSwaps() {
   const D = ai.data; const n = (st) => ai.swaps.filter((s) => !s.issue && s.status === st).length;
   let h = '<section style="display:flex;flex-direction:column;gap:16px" id="trocas"><div class="phead"><h2 style="font-size:28px">Trocas sugeridas</h2><span class="muted" style="font-size:15px">' + n('accepted') + ' aceitas · ' + n('kept') + ' travadas · ' + n('pending') + ' em aberto</span></div>';
   if (!ai.swaps.length) h += '<p class="soft">A leitura não sugeriu trocas. O deck já está refinado para o que você pediu.</p>';
-  ai.swaps.forEach((s) => {
+  const live = (ai.mode === 'key' && ai.key.trim()) || (ai.mode === 'code' && ai.code.trim());
+  ai.swaps.filter((s) => !s.issue).forEach((s) => {
     const out = s.outKey ? (state.base.find((d) => d.key === s.outKey) || {}).card : null; const p = ai.pool.get(s.inKey); const inC = p && p.card;
     h += '<div class="panel swap" style="' + (s.status === 'accepted' ? 'border-color:var(--good)' : s.issue ? 'opacity:.75' : '') + '"><div class="pair">'
       + '<div class="side"><div class="mono small" style="letter-spacing:.08em;color:var(--crit)">SAI</div>' + cardBtn(out, s.outKey, s.out) + '<div class="small muted">' + (out ? esc(mainType(out)) + (isLand(out) ? '' : ' · custo ' + mv(out)) : '&nbsp;') + '</div></div>'
@@ -1038,9 +1080,17 @@ function renderSwaps() {
       + '<p class="soft" style="font-size:15px">' + esc(s.motivo) + '</p>' + (s.issue ? '<div class="notice crit small">Sugestão descartada: ' + esc(s.issue) + '</div>' : '') + '</div><div class="acts">';
     if (!s.issue && s.status === 'pending') h += '<button type="button" class="btn primary" data-accept="' + s.id + '">Aceitar troca</button><button type="button" class="btn" data-keep="' + s.id + '">Manter ' + esc(s.out) + '</button>';
     else if (!s.issue) h += '<div style="font-size:15px;font-weight:600;color:' + (s.status === 'accepted' ? 'var(--good)' : 'var(--gold)') + '">' + (s.status === 'accepted' ? 'Troca aceita' : esc(s.out) + ' fica travada') + '</div><button type="button" class="btn" data-undo="' + s.id + '">Desfazer</button>';
+    if (live) h += '<button type="button" class="btn gold" data-alt="' + s.id + '"' + (ai.altBusy ? ' disabled' : '') + '>' + (ai.altBusy === s.id ? 'Buscando…' : 'Outra sugestão') + '</button>';
     if (inC) h += '<a class="small" target="_blank" rel="noopener" href="' + esc(liga(inC)) + '" style="display:inline-flex;align-items:center;min-height:44px">Ver preço na LigaMagic</a>';
-    h += '</div></div>';
+    h += '</div>';
+    if (live && (s.altOpen || ai.altBusy === s.id || s.altError)) h += '<div style="flex:1 1 100%;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:16px"><label class="lab" for="alt-' + s.id + '">O que você não gostou nesta troca? (opcional)</label>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap"><input type="text" id="alt-' + s.id + '" data-altinput="' + s.id + '" placeholder="Ex.: quero manter esta carta e cortar outra, ou prefiro uma opção mais barata" value="' + esc(s.altDraft || '') + '" style="flex:1 1 280px;min-width:0;min-height:44px;padding:0 14px"' + (ai.altBusy ? ' disabled' : '') + '>'
+      + '<button type="button" class="btn primary" data-altgo="' + s.id + '"' + (ai.altBusy ? ' disabled' : '') + '>' + (ai.altBusy === s.id ? 'Buscando…' : 'Gerar outra') + '</button></div>'
+      + (ai.altBusy === s.id ? '<p class="small" data-status="1" style="color:var(--gold)" aria-live="polite">' + esc(ai.status) + '</p>' : '')
+      + (s.altError ? '<div class="notice crit small">' + esc(s.altError) + '</div>' : '') + '</div>';
+    h += '</div>';
   });
+  if (ai.swaps.length && !live) h += '<p class="small muted">Para pedir outra sugestão ou discutir uma troca dentro do site, use o modo "Minha chave da Anthropic". No modo copiar e colar, peça no seu chat e gere a leitura de novo.</p>';
   // lista de compras
   const items = shopItems();
   h += '<div class="panel" style="border-color:var(--gold)"><div class="row"><div style="flex:3 1 360px;min-width:0;display:flex;flex-direction:column;gap:14px"><div class="phead" style="align-items:center"><h3 style="font-size:24px">Lista de compras</h3><div class="pillrow">'
@@ -1096,7 +1146,7 @@ function snapNow() {
   return { v: 1, id: state.snapId, createdAt: state.snapCreated, savedAt: Date.now(), title: A ? A.cmds.map((d) => d.card.name).join(' + ') : '', score: all.length ? all.reduce((a, x) => a + x.score, 0) / all.length : null, hasAI: !!ai.data,
     target: state.target, text: state.text || '', unresolved: state.unresolved, fixed: state.fixed, gcKnown: state.gcKnown,
     base: state.base.map((d) => ({ key: d.key, qty: d.qty, cmd: !!d.cmd, gc: !!d.gc, card: slim(d.card) })),
-    ai: { data: ai.data, swaps: ai.swaps, committed: ai.committed, pool: Array.from(ai.pool.entries()).map((e) => [e[0], { card: slim(e[1].card), gc: !!e[1].gc }]), notes: ai.notes, locks: Array.from(ai.locks), wish: ai.wish, budget: ai.budget, combos: ai.combos, chat: ai.chat, stale: ai.stale, lastCost: ai.lastCost } };
+    ai: { data: ai.data, swaps: ai.swaps, committed: ai.committed, pool: Array.from(ai.pool.entries()).map((e) => [e[0], { card: slim(e[1].card), gc: !!e[1].gc }]), notes: ai.notes, rejected: ai.rejected, locks: Array.from(ai.locks), wish: ai.wish, budget: ai.budget, combos: ai.combos, chat: ai.chat, stale: ai.stale, lastCost: ai.lastCost } };
 }
 let saveTimer = null;
 function scheduleSave() { clearTimeout(saveTimer); saveTimer = setTimeout(() => { if (!state.snapId || !state.base.length) return; const snap = snapNow(); const a = hist.list().filter((x) => x.id !== snap.id); a.unshift(snap); hist.write(a); }, 300); }
@@ -1114,6 +1164,7 @@ function openSnap(snap) {
     swaps: data ? (Array.isArray(S.swaps) ? S.swaps : []).slice(0, 12).map((w, i) => ({ id: 's' + i, out: str(w.out), in: str(w.in), inKey: norm(str(w.inKey) || str(w.in)), outKey: w.outKey ? norm(str(w.outKey)) : undefined, status: ['pending', 'accepted', 'kept'].indexOf(w.status) >= 0 ? w.status : 'pending', prio: str(w.prio), tipo: str(w.tipo), motivo: str(w.motivo), efeito: str(w.efeito), issue: w.issue ? str(w.issue) : null })) : [],
     committed: (Array.isArray(S.committed) ? S.committed : []).map((c) => ({ out: str(c.out), in: str(c.in), inKey: norm(str(c.inKey) || str(c.in)) })),
     pool: new Map((Array.isArray(S.pool) ? S.pool : []).filter(Array.isArray).map((e) => { const c = slim(e[1] && e[1].card); return [norm(str(e[0])), { card: c, gc: !!(e[1] && e[1].gc), tags: tagsOf(c) }]; })),
+    rejected: (Array.isArray(S.rejected) ? S.rejected : []).map(str).filter(Boolean).slice(0, 60), altBusy: null,
     notes: (Array.isArray(S.notes) ? S.notes : []).map(str).filter(Boolean), locks: new Set((Array.isArray(S.locks) ? S.locks : []).map(str)), wish: str(S.wish),
     chat: (Array.isArray(S.chat) ? S.chat : []).filter((m) => m && (m.role === 'user' || m.role === 'assistant')).map((m) => ({ role: m.role, text: str(m.text) })),
     stale: !!S.stale, lastCost: null, error: '', raw: '', paste: '', chatDraft: '', busy: false, chatBusy: false, status: ''
@@ -1167,7 +1218,7 @@ async function run() {
     });
     state.snapId = Date.now().toString(36); state.snapCreated = Date.now(); state.text = text;
     state.unresolved = r.unresolved; state.fixed = r.fixed; state.filter = null; state.sel = null; state.gcNames = gcNames;
-    Object.assign(ai, { data: null, swaps: [], committed: [], pool: new Map(), chat: [], notes: [], locks: new Set(), stale: false, error: '', paste: '', chatDraft: '', busy: false });
+    Object.assign(ai, { rejected: [], altBusy: null, data: null, swaps: [], committed: [], pool: new Map(), chat: [], notes: [], locks: new Set(), stale: false, error: '', paste: '', chatDraft: '', busy: false });
     if (!state.deck.length) throw new Error('Nenhuma carta da lista foi reconhecida.');
     if (!state.deck.some((d) => d.cmd)) state.deck[0].cmd = true;
     state.base = state.deck.map((d) => Object.assign({}, d));
@@ -1206,6 +1257,8 @@ document.addEventListener('click', (ev) => {
   if (t.id === 'btn-copy-prompt') return void copyText(SYSTEM + '\n\n' + analysisPrompt(), t);
   if (t.id === 'btn-paste-go') { if (!ai.paste.trim()) { ai.error = 'Cole a resposta do chat no campo acima.'; return void rerender(); } return void runAnalysis(ai.paste); }
   if (t.id === 'btn-ai-go') return void runAnalysis(null);
+  if (t.dataset.alt) { const sw = ai.swaps.find((x) => x.id === t.dataset.alt); if (sw) { sw.altOpen = !sw.altOpen; rerender(); const el = $('#alt-' + sw.id); if (el) el.focus(); } return; }
+  if (t.dataset.altgo) return void requestAlt(t.dataset.altgo);
   if (t.dataset.accept || t.dataset.keep || t.dataset.undo) {
     const sw = ai.swaps.find((x) => x.id === (t.dataset.accept || t.dataset.keep || t.dataset.undo)); if (!sw) return;
     if (t.dataset.accept) sw.status = 'accepted';
@@ -1241,8 +1294,9 @@ document.addEventListener('input', (ev) => {
   else if (id === 'apikey') { ai.key = ev.target.value; saveAI(); }
   else if (id === 'acode') { ai.code = ev.target.value; saveAI(); }
   else if (id === 'chatmsg') ai.chatDraft = ev.target.value;
+  else if (ev.target.dataset.altinput) { const sw = ai.swaps.find((x) => x.id === ev.target.dataset.altinput); if (sw) sw.altDraft = ev.target.value; }
 });
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.id === 'chatmsg') { ev.preventDefault(); sendChat(); } });
+document.addEventListener('keydown', (ev) => { if (ev.key !== 'Enter') return; if (ev.target.id === 'chatmsg') { ev.preventDefault(); sendChat(); } else if (ev.target.dataset && ev.target.dataset.altinput) { ev.preventDefault(); requestAlt(ev.target.dataset.altinput); } });
 $('#dlg').addEventListener('click', (ev) => { if (ev.target === $('#dlg')) $('#dlg').close(); });
 
 (function init() {
