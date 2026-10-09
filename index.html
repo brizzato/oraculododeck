@@ -449,14 +449,15 @@ function analyze() {
   spells.forEach((d) => { (manaCost(d.card).match(/\{[^}]+\}/g) || []).forEach((sym) => { sym.replace(/[{}]/g, '').split('/').filter((x) => pips[x] != null).forEach((x, _, arr) => { pips[x] += d.qty / arr.length; }); }); });
   const pipTotal = Object.values(pips).reduce((a, b) => a + b, 0);
   const src = {}; let srcTotal = 0;
-  A.identity.forEach((c) => { src[c] = count(lands.filter((d) => (d.card.produced_mana || []).indexOf(c) >= 0)); srcTotal += src[c]; });
+  const fixer = (d) => !(d.card.produced_mana || []).length && /search your library for [^.]*\b(land|plains|island|swamp|mountain|forest)\b/i.test(oracle(d.card));
+  A.identity.forEach((c) => { src[c] = count(lands.filter((d) => (d.card.produced_mana || []).indexOf(c) >= 0 || fixer(d))); srcTotal += src[c]; });
   A.colors = A.identity.filter((c) => COLORS[c]).map((c) => ({ c: c, name: COLORS[c][0], hex: COLORS[c][1], pips: pips[c], pipShare: pipTotal ? pips[c] / pipTotal : 0, src: src[c], srcShare: srcTotal ? src[c] / srcTotal : 0 }));
   A.colorless = count(lands.filter((d) => { const p = d.card.produced_mana || []; return p.length > 0 && !p.some((x) => idSet.has(x)); }));
-  A.noMana = count(lands.filter((d) => !(d.card.produced_mana || []).length));
+  A.noMana = count(lands.filter((d) => !(d.card.produced_mana || []).length && !fixer(d)));
 
   // terrenos: faixa de referência (fórmula de Frank Karsten para Commander)
   const rec = Math.round(31.42 + 3.13 * A.avg - 0.28 * A.cheap);
-  A.landLo = clamp(rec - 3, 28, 40); A.landHi = clamp(rec, 31, 43);
+  A.landLo = clamp(rec - 4, 28, 39); A.landHi = clamp(rec, 32, 43);
   A.landEq = A.lands + A.mdfc * 0.5;
 
   // bracket por regras verificáveis
@@ -476,10 +477,12 @@ function analyze() {
   const landGap = A.landEq < A.landLo ? A.landLo - A.landEq : A.landEq > A.landHi ? A.landEq - A.landHi : 0;
   const tappedOver = Math.max(0, A.tapped - Math.round(A.lands * 0.15));
   let colorPen = 0; const colorNotes = [];
-  A.colors.forEach((c) => { const d = (c.pipShare - c.srcShare) * 100; if (A.colors.length > 1 && d > 8) { colorPen += d / 5; colorNotes.push(c.name + ' tem ' + Math.round(c.pipShare * 100) + '% dos símbolos e ' + Math.round(c.srcShare * 100) + '% das fontes'); } });
-  add('mana', 'Base de mana', 10 - landGap * 1.2 - tappedOver * 0.3 - colorPen,
-    A.lands + ' terrenos' + (A.mdfc ? ' e ' + A.mdfc + ' MDFC' : '') + ', para uma faixa de referência de ' + A.landLo + ' a ' + A.landHi + '. ' + (A.tapped ? plural(A.tapped, 'terreno entra', 'terrenos entram') + ' sempre virado' + (A.tapped === 1 ? '. ' : 's. ') : 'Nenhum terreno entra sempre virado. ') + (colorNotes.length ? colorNotes.join('; ') + '.' : ''),
-    'A faixa vai de 3 terrenos abaixo até o valor da fórmula de Frank Karsten (31,42 + 3,13 × custo médio − 0,28 × ramp e compra de custo até 2). Começa em 10. Perde 1,2 por terreno fora da faixa, 0,3 por terreno virado acima de 15% dos terrenos e pontos por cor com menos fontes do que símbolos.');
+  A.colors.forEach((c) => { if (c.pipShare < 0.08) return; const need = Math.round(A.lands * Math.min(0.9, c.pipShare * 0.9 + (A.colors.length > 1 ? 0.12 : 0))); c.need = need; if (c.src < need) { colorPen += (need - c.src) * 0.4; colorNotes.push(c.name + ' tem ' + c.src + ' fontes para cerca de ' + need + ' recomendadas'); } });
+  const pLand = Math.min(5, landGap * 1.0); const pTap = Math.min(2, tappedOver * 0.3); const pCol = Math.min(3, colorPen);
+  const parts = [pLand ? 'quantidade de terrenos −' + fmt(pLand) : '', pTap ? 'terrenos virados −' + fmt(pTap) : '', pCol ? 'fontes de cor −' + fmt(pCol) : ''].filter(Boolean);
+  add('mana', 'Base de mana', 10 - pLand - pTap - pCol,
+    A.lands + ' terrenos' + (A.mdfc ? ' e ' + A.mdfc + ' MDFC' : '') + ', para uma faixa de referência de ' + A.landLo + ' a ' + A.landHi + '. ' + (A.tapped ? plural(A.tapped, 'terreno entra', 'terrenos entram') + ' sempre virado' + (A.tapped === 1 ? '. ' : 's. ') : 'Nenhum terreno entra sempre virado. ') + (colorNotes.length ? colorNotes.join('; ') + '. ' : '') + (parts.length ? 'Descontos: ' + parts.join(', ') + '.' : 'Sem descontos.'),
+    'A faixa vai de 4 terrenos abaixo até o valor da fórmula de Frank Karsten (31,42 + 3,13 × custo médio − 0,28 × ramp e compra de custo até 2). Começa em 10. Perde 1 por terreno fora da faixa (até 5), 0,3 por terreno virado acima de 15% dos terrenos (até 2) e 0,4 por fonte que falta em cada cor (até 3). A recomendação de fontes por cor é proporcional aos símbolos daquela cor nos custos.');
   add('curva', 'Curva', 10 - Math.max(0, A.avg - 3.0) * 5 - Math.max(0, A.top - 8) * 0.3,
     'Custo médio de ' + fmt(A.avg, 2) + ' entre as cartas que não são terreno. ' + plural(A.top, 'carta custa', 'cartas custam') + ' 6 ou mais.',
     'Começa em 10. Perde 5 pontos por ponto de custo médio acima de 3,0 e 0,3 por carta de custo 6+ além da oitava. Redutores de custo ainda não entram nesta conta.');
@@ -506,14 +509,14 @@ function analyze() {
   if (A.offColor.length) push(0, plural(A.offColor.length, 'carta fora', 'cartas fora') + ' da identidade de cor', A.offColor.map((d) => d.card.name).join(', ') + '.');
   if (A.dupes.length) push(0, 'Cópias repetidas', A.dupes.map((d) => d.qty + '× ' + d.card.name).join(', ') + '. Commander permite uma cópia de cada carta, fora os terrenos básicos.');
   if (A.badCmd.length) push(1, 'Comandante incomum', A.badCmd.map((d) => d.card.name).join(', ') + ' não é uma criatura lendária. Confira se é o comandante certo no seletor acima.');
-  if (landGap >= 3) push(0, 'Terrenos muito fora da faixa', A.lands + ' terrenos para uma faixa de ' + A.landLo + ' a ' + A.landHi + ', com custo médio de ' + fmt(A.avg, 2) + '.');
+  if (landGap >= 4) push(0, 'Terrenos muito fora da faixa', A.lands + ' terrenos para uma faixa de ' + A.landLo + ' a ' + A.landHi + ', com custo médio de ' + fmt(A.avg, 2) + '.');
   else if (landGap > 0) push(1, A.landEq < A.landLo ? 'Poucos terrenos' : 'Terrenos acima da faixa', A.lands + ' terrenos para uma faixa de ' + A.landLo + ' a ' + A.landHi + '.');
   if (A.fn.draw <= 6) push(0, 'Pouca vantagem de cartas', plural(A.fn.draw, 'fonte', 'fontes') + ' de compra e ' + plural(A.fn.engine, 'motor', 'motores') + '. Meta: 10 a 12.');
   else if (A.fn.draw < 10) push(1, 'Compra abaixo da meta', A.fn.draw + ' fontes de compra. Meta: 10 a 12.');
   if (A.top >= 12) push(1, 'Topo de curva pesado', A.top + ' cartas de custo 6 ou mais, com custo médio de ' + fmt(A.avg, 2) + '.');
   if (A.fn.ramp < 10) push(1, 'Ramp abaixo da meta', plural(A.fn.ramp, 'peça', 'peças') + ' para um custo médio de ' + fmt(A.avg, 2) + '. Meta: 10 a 12.');
   if (inter < 6) push(1, 'Pouca interação pontual', inter + ' respostas entre remoções e anulações. Meta: 8.');
-  if (colorNotes.length) push(1, 'Cores desbalanceadas', colorNotes.join('; ') + '.');
+  if (colorNotes.length) push(1, 'Faltam fontes de cor', colorNotes.join('; ') + '.');
   if (A.bracket > state.target) push(1, 'Bracket acima do alvo', 'Estimado ' + A.bracket + ', alvo ' + state.target + '. Veja o motivo no painel de bracket.');
   if (A.fn.wipe === 0) push(2, 'Nenhum wipe', 'O deck não tem como zerar a mesa se ficar para trás.');
   if (A.fn.protect < 3) push(2, 'Pouca proteção', plural(A.fn.protect, 'carta protege', 'cartas protegem') + ' o board ou o comandante. Meta: 3 a 6.');
@@ -673,7 +676,9 @@ function openCard(key) {
 }
 
 /* ============ leitura de estratégia (IA) ============ */
-const ai = { raw: '', budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
+/* Endereço do serviço que guarda a chave do dono do site. Vazio = modo "código de acesso" desligado. */
+const PROXY_URL = '';
+const ai = { code: '', raw: '', budget: 'mod', combos: 'nao', wish: '', notes: [], mode: 'paste', key: '', model: 'claude-sonnet-5-5', remember: true, data: null, swaps: [], committed: [], pool: new Map(), busy: false, error: '', paste: '', chat: [], chatDraft: '', chatBusy: false, shop: 'all', locks: new Set(), stale: false, copied: '' };
 const MODELS = [['claude-sonnet-5-5', 'Claude Sonnet 5.5 (mais barato)'], ['claude-opus-5-5', 'Claude Opus 5.5 (mais detalhado)']];
 const BUDGETS = { eco: ['Econômico', 'Orçamento econômico: prefira cartas baratas, até cerca de R$ 30 cada.'], mod: ['Moderado', 'Orçamento moderado: evite cartas acima de cerca de R$ 150 cada.'], livre: ['Sem limite', 'Sem limite de orçamento.'] };
 const COMBOS = { nao: ['Evitar', 'Não sugira combos infinitos nem linhas degeneradas.'], sim: ['Aceito', 'O jogador aceita combos infinitos se forem coerentes com o plano.'] };
@@ -799,15 +804,20 @@ function normalizeAI(j) {
 async function callClaude(system, messages, maxTokens, schema) {
   let res;
   try {
-    res = await fetch('https://api.anthropic.com/v1/messages', {
+    const viaCode = ai.mode === 'code';
+    const payload = Object.assign({ model: ai.model, max_tokens: maxTokens, system: system, messages: messages }, schema ? { output_config: { format: { type: 'json_schema', schema: schema } } } : {});
+    if (viaCode) payload.code = ai.code.trim();
+    res = await fetch(viaCode ? PROXY_URL : 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': ai.key.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify(Object.assign({ model: ai.model, max_tokens: maxTokens, system: system, messages: messages }, schema ? { output_config: { format: { type: 'json_schema', schema: schema } } } : {}))
+      headers: viaCode ? { 'content-type': 'application/json' } : { 'content-type': 'application/json', 'x-api-key': ai.key.trim(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify(payload)
     });
-  } catch (e) { throw new Error('Não consegui falar com a Anthropic. Confira sua internet e tente de novo.'); }
+  } catch (e) { throw new Error('Não consegui falar com o serviço de IA. Confira sua internet e tente de novo.'); }
   const j = await res.json().catch(() => ({}));
   if (!res.ok) {
     const m = (j.error && j.error.message) || '';
+    if (ai.mode === 'code' && res.status === 403) throw new Error(m || 'Código de acesso incorreto.');
+    if (ai.mode === 'code' && /credit/i.test(m)) throw new Error('O serviço está sem créditos no momento. Avise o dono do site ou use o modo "Meu ChatGPT ou Claude".');
     if (res.status === 401) throw new Error('A chave não foi aceita. Confira se colou a chave inteira, começando por sk-ant-.');
     if (res.status === 429) throw new Error('Limite de uso atingido. Aguarde um minuto e tente de novo.');
     if (/credit/i.test(m)) throw new Error('Sua conta da Anthropic está sem créditos. Recarregue no console e tente de novo.');
@@ -870,7 +880,8 @@ async function runAnalysis(text) {
   ai.error = ''; ai.raw = '';
   try {
     if (text == null) {
-      if (!ai.key.trim()) { ai.error = 'Cole sua chave da Anthropic no campo acima.'; return; }
+      if (ai.mode === 'code' && !ai.code.trim()) { ai.error = 'Digite o código de acesso no campo acima.'; return; }
+      if (ai.mode === 'key' && !ai.key.trim()) { ai.error = 'Cole sua chave da Anthropic no campo acima.'; return; }
       ai.busy = true; rerender();
       const r = await callClaude(SYSTEM, [{ role: 'user', content: deckContext() + '\n\n' + TOOLNOTE }], 16000, TOOL.input_schema);
       ai.raw = 'stop_reason: ' + r.stop + '\n' + (r.text || '(resposta vazia)');
@@ -891,7 +902,7 @@ async function runAnalysis(text) {
 async function sendChat() {
   const msg = ai.chatDraft.trim(); if (!msg) return;
   ai.notes.push(msg); ai.chatDraft = ''; ai.stale = !!ai.data;
-  if (ai.mode !== 'key' || !ai.key.trim()) { rerender(); return; }
+  if (!((ai.mode === 'key' && ai.key.trim()) || (ai.mode === 'code' && ai.code.trim()))) { rerender(); return; }
   ai.chat.push({ role: 'user', text: msg }); ai.chatBusy = true; rerender();
   try {
     const sys = SYSTEM + '\n\nVocê está conversando com o jogador sobre este deck. Responda em português, em texto corrido e curto (até 150 palavras), sem JSON e sem listas longas. Se citar cartas, use o nome exato em inglês.\n\n' + deckContext() + (ai.data ? '\n\nSUA LEITURA ANTERIOR (JSON):\n' + JSON.stringify(ai.data) : '');
@@ -901,8 +912,8 @@ async function sendChat() {
   finally { ai.chatBusy = false; rerender(); }
 }
 
-function saveAI() { const s = store.get(); s.ai = { budget: ai.budget, combos: ai.combos, mode: ai.mode, model: ai.model, remember: ai.remember, key: ai.remember ? ai.key : '' }; store.set(s); }
-function loadAI() { const s = (store.get().ai) || {}; ['budget', 'combos', 'mode', 'model', 'key'].forEach((k) => { if (typeof s[k] === 'string' && s[k]) ai[k] = s[k]; }); if (typeof s.remember === 'boolean') ai.remember = s.remember; if (!BUDGETS[ai.budget]) ai.budget = 'mod'; if (!COMBOS[ai.combos]) ai.combos = 'nao'; if (!MODELS.some((m) => m[0] === ai.model)) ai.model = MODELS[0][0]; }
+function saveAI() { const s = store.get(); s.ai = { budget: ai.budget, combos: ai.combos, mode: ai.mode, model: ai.model, remember: ai.remember, key: ai.remember ? ai.key : '', code: ai.remember ? ai.code : '' }; store.set(s); }
+function loadAI() { const s = (store.get().ai) || {}; ['budget', 'combos', 'mode', 'model', 'key', 'code'].forEach((k) => { if (typeof s[k] === 'string' && s[k]) ai[k] = s[k]; }); if (typeof s.remember === 'boolean') ai.remember = s.remember; if (PROXY_URL && !s.mode) ai.mode = 'code'; if (!PROXY_URL && ai.mode === 'code') ai.mode = 'paste'; if (!BUDGETS[ai.budget]) ai.budget = 'mod'; if (!COMBOS[ai.combos]) ai.combos = 'nao'; if (!MODELS.some((m) => m[0] === ai.model)) ai.model = MODELS[0][0]; }
 function rerender() { const y = window.scrollY; renderDiag(); window.scrollTo(0, y); }
 
 function aiScores() {
@@ -927,12 +938,18 @@ function renderAISetup() {
     + (ai.notes.length ? '<div class="fld"><span class="lab">O que você já disse</span>' + ai.notes.map((n, i) => '<div class="note"><span>' + esc(n) + '</span><button type="button" class="x" data-delnote="' + i + '" aria-label="Remover">×</button></div>').join('') + '</div>' : '')
     + '</div>';
   h += '<div style="flex:1 1 340px;min-width:0;display:flex;flex-direction:column;gap:16px"><div class="fld"><span class="lab">Como rodar a leitura</span><div class="pillrow">'
+    + (PROXY_URL ? '<button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="mode:code" aria-pressed="' + (ai.mode === 'code') + '">Código de acesso</button>' : '')
     + '<button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="mode:paste" aria-pressed="' + (ai.mode === 'paste') + '">Meu ChatGPT ou Claude</button>'
     + '<button type="button" class="pill" style="font-weight:500;font-size:15px" data-set="mode:key" aria-pressed="' + (ai.mode === 'key') + '">Minha chave da Anthropic</button></div></div>';
   if (ai.mode === 'paste') {
     h += '<ol class="steps2"><li><button type="button" class="btn primary" id="btn-copy-prompt">' + (ai.copied === 'prompt' ? 'Pedido copiado' : 'Copiar pedido') + '</button><span class="small muted">Copia os números do deck, as cartas e as instruções.</span></li>'
       + '<li><span>Cole no seu chat (ChatGPT, Claude ou outro), espere a resposta e copie-a inteira.</span></li>'
       + '<li><label for="paste">Cole a resposta aqui:</label><textarea id="paste" class="short" spellcheck="false" placeholder="{ &quot;leitura&quot;: ... }">' + esc(ai.paste) + '</textarea><div><button type="button" class="btn gold" id="btn-paste-go"' + (ai.busy ? ' disabled' : '') + '>' + (ai.busy ? 'Conferindo as cartas…' : 'Mostrar leitura') + '</button></div></li></ol>';
+  } else if (ai.mode === 'code') {
+    h += '<div class="fld"><label class="lab" for="acode">Código de acesso</label><input type="password" id="acode" autocomplete="off" placeholder="O código que você recebeu" value="' + esc(ai.code) + '" style="min-height:44px;padding:0 14px"></div>'
+      + '<label class="small" style="display:flex;gap:8px;align-items:center;min-height:44px"><input type="checkbox" id="remember"' + (ai.remember ? ' checked' : '') + '> Lembrar o código neste navegador</label>'
+      + '<p class="small muted">Quem tem o código usa a IA do dono do site, sem precisar de conta própria.</p>'
+      + '<div><button type="button" class="btn primary" id="btn-ai-go"' + (ai.busy ? ' disabled' : '') + '>' + (ai.busy ? 'Analisando… leva cerca de um minuto' : ai.data ? 'Gerar nova leitura' : 'Gerar leitura') + '</button></div>';
   } else {
     h += '<div class="fld"><label class="lab" for="apikey">Chave da Anthropic</label><input type="password" id="apikey" autocomplete="off" placeholder="sk-ant-..." value="' + esc(ai.key) + '" style="min-height:44px;padding:0 14px"></div>'
       + '<div class="fld"><label class="lab" for="model">Modelo</label><select id="model">' + MODELS.map((m) => '<option value="' + m[0] + '"' + (ai.model === m[0] ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select></div>'
@@ -1006,7 +1023,7 @@ function renderVerdict() {
 }
 
 function renderChat() {
-  const D = ai.data; const key = ai.mode === 'key';
+  const D = ai.data; const key = ai.mode === 'key' || ai.mode === 'code';
   let h = '<section class="panel" id="conversa"><h2 style="font-size:24px">Conversa sobre a estratégia</h2>';
   if (D && D.pergunta) h += '<div class="bubble them">' + esc(D.pergunta) + '</div>';
   ai.chat.forEach((m) => { h += '<div class="bubble ' + (m.role === 'user' ? 'me' : 'them') + '"' + (m.err ? ' style="border-color:var(--crit)"' : '') + '>' + esc(m.text) + '</div>'; });
@@ -1100,6 +1117,7 @@ document.addEventListener('input', (ev) => {
   if (id === 'wish') { ai.wish = ev.target.value; if (ai.data) ai.stale = true; }
   else if (id === 'paste') ai.paste = ev.target.value;
   else if (id === 'apikey') { ai.key = ev.target.value; saveAI(); }
+  else if (id === 'acode') { ai.code = ev.target.value; saveAI(); }
   else if (id === 'chatmsg') ai.chatDraft = ev.target.value;
 });
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && ev.target.id === 'chatmsg') { ev.preventDefault(); sendChat(); } });
